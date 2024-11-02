@@ -1,0 +1,17 @@
+DecisionTrees_Test Notebook  started at...  completed at Sat Nov  2 23:57:30 2024. Elapsed time: 0 minutes and 0.02 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sat Nov  2 23:57:33 2024. Elapsed time: 0 minutes and 3.58 seconds
+--------------------------------------------------- ------------------   completed at Sat Nov  2 23:57:33 2024. Elapsed time: 0 minutes and 3.58 seconds
+START - Feature Engineering .....   completed at Sat Nov  2 23:57:33 2024. Elapsed time: 0 minutes and 0.00 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sat Nov  2 23:57:34 2024. Elapsed time: 0 minutes and 1.09 seconds
+Part2 - Distance Calculation  completed at Sat Nov  2 23:59:24 2024. Elapsed time: 1 minutes and 49.42 seconds
+Part3 - Merchant Categories & Age group completed at Sat Nov  2 23:59:24 2024. Elapsed time: 0 minutes and 0.44 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 00:05:39 2024. Elapsed time: 6 minutes and 14.75 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 00:05:43 2024. Elapsed time: 0 minutes and 3.93 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 00:05:47 2024. Elapsed time: 0 minutes and 4.49 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 00:14:00 2024. Elapsed time: 8 minutes and 12.22 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 00:14:51 2024. Elapsed time: 0 minutes and 51.95 seconds
+Part10 - Density completed at Sun Nov  3 00:14:52 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - PageRank completed at Sun Nov  3 00:14:53 2024. Elapsed time: 0 minutes and 1.59 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 00:14:53 2024. Elapsed time: 0 minutes and 0.13 seconds
+DecisionTrees_Test START Model ....   completed at Sun Nov  3 00:14:53 2024. Elapsed time: 0 minutes and 0.01 seconds
+DecisionTrees_Test Notebook Ended at...  completed at Sun Nov  3 00:24:56 2024. Elapsed time: 27 minutes and 26.84 seconds

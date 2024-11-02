@@ -1,0 +1,17 @@
+Notebook (Random Forest with DASK Balanced & SMOTE Model ) started at...  completed at Thu Oct 31 19:14:33 2024. Elapsed time: 0 minutes and 0.03 seconds
+Starting the DASK CLient completed at Thu Oct 31 19:14:33 2024. Elapsed time: 0 minutes and 0.41 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Thu Oct 31 19:14:57 2024. Elapsed time: 0 minutes and 23.69 seconds
+START - Feature Engineering .....   completed at Thu Oct 31 19:14:57 2024. Elapsed time: 0 minutes and 0.00 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Thu Oct 31 19:14:59 2024. Elapsed time: 0 minutes and 2.61 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Thu Oct 31 20:19:40 2024. Elapsed time: 64 minutes and 40.12 seconds
+Part3 - Merchant Categories & Age group completed at Thu Oct 31 20:19:41 2024. Elapsed time: 64 minutes and 42.04 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Thu Oct 31 20:41:33 2024. Elapsed time: 21 minutes and 51.61 seconds
+Part5 - RapidTransactionFlag completed at Thu Oct 31 20:41:48 2024. Elapsed time: 22 minutes and 6.33 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Thu Oct 31 20:42:02 2024. Elapsed time: 0 minutes and 13.91 seconds
+Part7 - NetworkX Start Step completed at Thu Oct 31 20:51:42 2024. Elapsed time: 9 minutes and 39.96 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Thu Oct 31 21:03:26 2024. Elapsed time: 11 minutes and 44.22 seconds
+Part9 - Community & Top Merchants completed at Thu Oct 31 21:04:43 2024. Elapsed time: 13 minutes and 1.38 seconds
+Part10 - Density completed at Thu Oct 31 21:04:43 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - PageRank completed at Thu Oct 31 21:04:46 2024. Elapsed time: 0 minutes and 3.18 seconds
+END - Feature Engineering .....   completed at Thu Oct 31 21:04:46 2024. Elapsed time: 0 minutes and 0.02 seconds
+START - Random Forest with DASK .....   completed at Thu Oct 31 21:04:46 2024. Elapsed time: 0 minutes and 0.01 seconds

@@ -1,0 +1,14 @@
+Notebook started at...  completed at Wed Oct 30 09:12:03 2024. Elapsed time: 0 minutes and 0.01 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Wed Oct 30 09:12:12 2024. Elapsed time: 0 minutes and 8.79 seconds
+Part1 - Feature Engineering - TrxAmount, Hour, DayOfWeeek etc.. completed at Wed Oct 30 09:12:15 2024. Elapsed time: 0 minutes and 2.70 seconds
+Part2 - Feature Engineering -- Distance Calculation completed at Wed Oct 30 09:15:59 2024. Elapsed time: 3 minutes and 43.84 seconds
+Part3 - Feature Engineering -- Merchant Categories & Age group completed at Wed Oct 30 09:16:00 2024. Elapsed time: 0 minutes and 1.16 seconds
+Part4 - Feature Engineering -- count_transactions_within_last_hour completed at Wed Oct 30 09:29:05 2024. Elapsed time: 13 minutes and 5.45 seconds
+Part5 - Feature Engineering -- RapidTransactionFlag completed at Wed Oct 30 09:29:15 2024. Elapsed time: 0 minutes and 10.27 seconds
+Part6 - Feature Engineering -- TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Wed Oct 30 09:29:27 2024. Elapsed time: 0 minutes and 11.67 seconds
+Part7 - Feature Engineering -- NetworkX Start Step completed at Wed Oct 30 09:30:55 2024. Elapsed time: 1 minutes and 27.59 seconds
+Part8 - Feature Engineering -- NetworkX betweenness_centrality completed at Wed Oct 30 09:42:01 2024. Elapsed time: 11 minutes and 6.03 seconds
+Part9 - Feature Engineering -- Community & Top Merchants completed at Wed Oct 30 09:43:15 2024. Elapsed time: 1 minutes and 14.74 seconds
+Part10 - Feature Engineering -- Density completed at Wed Oct 30 09:43:15 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - Feature Engineering -- PageRank completed at Wed Oct 30 09:43:18 2024. Elapsed time: 0 minutes and 2.48 seconds
+Notebook Ended at...  completed at Wed Oct 30 09:44:16 2024. Elapsed time: 32 minutes and 12.51 seconds

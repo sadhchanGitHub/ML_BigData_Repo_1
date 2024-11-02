@@ -1,0 +1,3941 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "ed941d52",
+   "metadata": {},
+   "source": [
+    "# v2.0 - Random Forest Balanced SMOTE with DASK"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 93,
+   "id": "d3e22053",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import time\n",
+    "import numpy as np\n",
+    "import pandas as pd\n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "import networkx as nx\n",
+    "from sklearn import preprocessing\n",
+    "import geopy\n",
+    "from geopy.distance import geodesic\n",
+    "import pickle\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "import dask.dataframe as dd\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 94,
+   "id": "d3ff9499",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import sys\n",
+    "sys.path.append('../references')  # Add the references folder to the system path\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 95,
+   "id": "ab52f294",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "start_time_notebook = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 96,
+   "id": "c56c046a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Directory to save the figures \n",
+    "\n",
+    "input_src_dir = '/Users/sadhvichandragiri/desktop/coding/ZHAW_Project/ML_BigData_Repo_1/data/raw'\n",
+    "output_dir_figures_train = '/Users/sadhvichandragiri/desktop/coding/ZHAW_Project/ML_BigData_Repo_1/reports/figures/train_figures'\n",
+    "output_dir_figures_test = '/Users/sadhvichandragiri/desktop/coding/ZHAW_Project/ML_BigData_Repo_1/reports/figures/test_figures'\n",
+    "reports_output_dir = '/Users/sadhvichandragiri/desktop/coding/ZHAW_Project/ML_BigData_Repo_1/reports'"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 97,
+   "id": "e37d27bd",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Define which dataset to use\n",
+    "use_test_data = False  # Set to True when using fraudtest.csv\n",
+    "\n",
+    "# Determine dataset type based on the variable\n",
+    "dataset_type = 'Test' if use_test_data else 'Train'\n",
+    "\n",
+    "# Load the appropriate dataset\n",
+    "\n",
+    "if use_test_data:\n",
+    "    output_dir_figures = output_dir_figures_test\n",
+    "else:\n",
+    "    output_dir_figures = output_dir_figures_train"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 98,
+   "id": "bd0bc5e2",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Generate the preprocess file name dynamically\n",
+    "# Get the current timestamp\n",
+    "timestamp = time.strftime(\"%Y%m%d_%H%M%S\")  # Format: YYYYMMDD_HHMMSS\n",
+    "\n",
+    "preprocess_file_title = 'preprocess_times_with_multiprocessing'\n",
+    "#preprocess_file_name = f\"{dataset_type}_{preprocess_file_title.replace(',', '').lower()}.txt\"\n",
+    "preprocess_file_name = f\"{dataset_type}_{preprocess_file_title.replace(',', '').lower().split('.')[0]}_{timestamp}.txt\"\n",
+    "\n",
+    "preprocess_file_path = os.path.join(reports_output_dir, preprocess_file_name)\n",
+    "\n",
+    "# Function to log times to a file\n",
+    "def log_time(step_name, start_time):\n",
+    "    end_time = time.time()\n",
+    "    elapsed_time = end_time - start_time\n",
+    "    log_message = (f\"{step_name} completed at {time.ctime(end_time)}. \"\n",
+    "                   f\"Elapsed time: {elapsed_time // 60:.0f} minutes and {elapsed_time % 60:.2f} seconds\\n\")\n",
+    "    \n",
+    "    # Append log to file\n",
+    "    with open(preprocess_file_path, 'a') as f:\n",
+    "        f.write(log_message)\n",
+    "    \n",
+    "    # Print the message to the console as well\n",
+    "    print(log_message)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 99,
+   "id": "383fd5cc",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Notebook (Random Forest with DASK Balanced & SMOTE Model ) started at...  completed at Thu Oct 31 22:14:38 2024. Elapsed time: 0 minutes and 0.03 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Notebook (Random Forest with DASK Balanced & SMOTE Model ) started at... \", start_time_notebook)\n",
+    "start_time = time.time()"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "a17fc867",
+   "metadata": {},
+   "source": [
+    "# Load the appropriate dataset\n",
+    "\n",
+    "if use_test_data:\n",
+    "    df = pd.read_csv(f\"{input_src_dir}/fraudTest.csv\")  # Concatenate the directory with the filename\n",
+    "else:\n",
+    "    df = pd.read_csv(f\"{input_src_dir}/fraudTrain.csv\")\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0253dfc7",
+   "metadata": {},
+   "source": [
+    "# Use Dask already from the beginning\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 100,
+   "id": "0b58eee6",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Starting the DASK CLient completed at Thu Oct 31 22:14:38 2024. Elapsed time: 0 minutes and 0.04 seconds\n",
+      "\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/sadhvichandragiri/opt/anaconda3/envs/ZHAW_Project/lib/python3.10/site-packages/distributed/node.py:187: UserWarning: Port 8787 is already in use.\n",
+      "Perhaps you already have a cluster running?\n",
+      "Hosting the HTTP server on port 59073 instead\n",
+      "  warnings.warn(\n"
+     ]
+    }
+   ],
+   "source": [
+    "from dask.distributed import Client\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "import dask.dataframe as dd\n",
+    "\n",
+    "log_time(\"Starting the DASK CLient\", start_time_notebook)\n",
+    "\n",
+    "# Start Dask client\n",
+    "client = Client()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 101,
+   "id": "a5b76b9a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "\n",
+    "# Load the dataset directly into Dask\n",
+    "if use_test_data:\n",
+    "    df_pre = dd.read_csv(f\"{input_src_dir}/fraudTest.csv\", assume_missing=True)\n",
+    "else:\n",
+    "    df_pre = dd.read_csv(f\"{input_src_dir}/fraudTrain.csv\", assume_missing=True)\n",
+    "\n",
+    "\n",
+    "# Now proceed with preprocessing, feature engineering, and model training on `df`\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 102,
+   "id": "abe2bb1f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Number of partitions: 5\n",
+      "Columns: Index(['Unnamed: 0', 'TransactionTime', 'CreditCardNumber', 'merchant',\n",
+      "       'category', 'TransactionAmount', 'first', 'last', 'gender', 'street',\n",
+      "       'city', 'state', 'zip', 'lat', 'long', 'city_pop', 'job', 'DateOfBirth',\n",
+      "       'trans_num', 'unix_time', 'merch_lat', 'merch_long', 'is_fraud'],\n",
+      "      dtype='object')\n",
+      "   Unnamed: 0      TransactionTime  CreditCardNumber  \\\n",
+      "0         0.0  2019-01-01 00:00:18      2.703186e+15   \n",
+      "1         1.0  2019-01-01 00:00:44      6.304233e+11   \n",
+      "2         2.0  2019-01-01 00:00:51      3.885949e+13   \n",
+      "3         3.0  2019-01-01 00:01:16      3.534094e+15   \n",
+      "4         4.0  2019-01-01 00:03:06      3.755342e+14   \n",
+      "\n",
+      "                             merchant       category  TransactionAmount  \\\n",
+      "0          fraud_Rippin, Kub and Mann       misc_net               4.97   \n",
+      "1     fraud_Heller, Gutmann and Zieme    grocery_pos             107.23   \n",
+      "2                fraud_Lind-Buckridge  entertainment             220.11   \n",
+      "3  fraud_Kutch, Hermiston and Farrell  gas_transport              45.00   \n",
+      "4                 fraud_Keeling-Crist       misc_pos              41.96   \n",
+      "\n",
+      "       first     last gender                        street  ...      lat  \\\n",
+      "0   Jennifer    Banks      F                561 Perry Cove  ...  36.0788   \n",
+      "1  Stephanie     Gill      F  43039 Riley Greens Suite 393  ...  48.8878   \n",
+      "2     Edward  Sanchez      M      594 White Dale Suite 530  ...  42.1808   \n",
+      "3     Jeremy    White      M   9443 Cynthia Court Apt. 038  ...  46.2306   \n",
+      "4      Tyler   Garcia      M              408 Bradley Rest  ...  38.4207   \n",
+      "\n",
+      "       long  city_pop                                job  DateOfBirth  \\\n",
+      "0  -81.1781    3495.0          Psychologist, counselling   1988-03-09   \n",
+      "1 -118.2105     149.0  Special educational needs teacher   1978-06-21   \n",
+      "2 -112.2620    4154.0        Nature conservation officer   1962-01-19   \n",
+      "3 -112.1138    1939.0                    Patent attorney   1967-01-12   \n",
+      "4  -79.4629      99.0     Dance movement psychotherapist   1986-03-28   \n",
+      "\n",
+      "                          trans_num     unix_time  merch_lat  merch_long  \\\n",
+      "0  0b242abb623afc578575680df30655b9  1.325376e+09  36.011293  -82.048315   \n",
+      "1  1f76529f8574734946361c461b024d99  1.325376e+09  49.159047 -118.186462   \n",
+      "2  a1a22d70485983eac12b5b88dad1cf95  1.325376e+09  43.150704 -112.154481   \n",
+      "3  6b849c168bdad6f867558c3793159a81  1.325376e+09  47.034331 -112.561071   \n",
+      "4  a41d7549acf90789359a9aa5346dcb46  1.325376e+09  38.674999  -78.632459   \n",
+      "\n",
+      "   is_fraud  \n",
+      "0       0.0  \n",
+      "1       0.0  \n",
+      "2       0.0  \n",
+      "3       0.0  \n",
+      "4       0.0  \n",
+      "\n",
+      "[5 rows x 23 columns]\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Optionally repartition the dataset if necessary\n",
+    "df_pre = df_pre.repartition(npartitions=5)\n",
+    "\n",
+    "\n",
+    "# Strip whitespace from column names and rename\n",
+    "df_pre.columns = df_pre.columns.str.strip()\n",
+    "df_pre = df_pre.rename(columns={'amt': 'TransactionAmount', 'cc_num': 'CreditCardNumber', 'dob': 'DateOfBirth', 'trans_date_trans_time': 'TransactionTime'})\n",
+    "\n",
+    "# Repartition to ensure consistency\n",
+    "df_pre = df_pre.repartition(npartitions=5)\n",
+    "\n",
+    "# Preview without converting to Pandas\n",
+    "print(\"Number of partitions:\", df_pre.npartitions)\n",
+    "print(\"Columns:\", df_pre.columns)\n",
+    "print(df_pre.head())  # No .compute() here\n",
+    "\n",
+    "# Final transformations or computations\n",
+    "# Only use .compute() at the very end if needed, for example:\n",
+    "df = df_pre.compute()  # Converts to Pandas for the entire dataset\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 103,
+   "id": "6a11b824",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Index(['Unnamed: 0', 'TransactionTime', 'CreditCardNumber', 'merchant',\n",
+      "       'category', 'TransactionAmount', 'first', 'last', 'gender', 'street',\n",
+      "       'city', 'state', 'zip', 'lat', 'long', 'city_pop', 'job', 'DateOfBirth',\n",
+      "       'trans_num', 'unix_time', 'merch_lat', 'merch_long', 'is_fraud'],\n",
+      "      dtype='object')\n",
+      "(1296675, 23)\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df.columns)\n",
+    "print(df.shape)\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "9042c84c",
+   "metadata": {},
+   "source": [
+    "df.columns = df.columns.str.strip()\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "a6829be1",
+   "metadata": {},
+   "source": [
+    "df = df.rename(columns={'amt': 'TransactionAmount', 'cc_num': 'CreditCardNumber', 'dob': 'DateOfBirth', 'trans_date_trans_time': 'TransactionTime'})\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "7500a890",
+   "metadata": {},
+   "source": [
+    "print(df.columns)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 104,
+   "id": "73a7c91d",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Convert to Pandas and generate TransactionID\n",
+    "df = df_pre.compute()\n",
+    "df = df.reset_index(drop=True)\n",
+    "df['TransactionID'] = df.index + 1  # Unique TransactionID\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 105,
+   "id": "5c847926",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Columns: Index(['Unnamed: 0', 'TransactionTime', 'CreditCardNumber', 'merchant',\n",
+      "       'category', 'TransactionAmount', 'first', 'last', 'gender', 'street',\n",
+      "       'city', 'state', 'zip', 'lat', 'long', 'city_pop', 'job', 'DateOfBirth',\n",
+      "       'trans_num', 'unix_time', 'merch_lat', 'merch_long', 'is_fraud',\n",
+      "       'TransactionID'],\n",
+      "      dtype='object')\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "print(\"Columns:\", df.columns)\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "02327c04",
+   "metadata": {},
+   "source": [
+    "#debug\n",
+    "import pandas as pd\n",
+    "df_check = pd.read_csv(f\"{input_src_dir}/fraudTrain.csv\")\n",
+    "print(\"Original CSV Row Count:\", len(df_check))\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "96d16888",
+   "metadata": {},
+   "source": [
+    "#debug\n",
+    "df = dd.read_csv(f\"{input_src_dir}/fraudTrain.csv\", assume_missing=True)\n",
+    "row_count = df.size.compute() // len(df.columns)  # Approximate row count\n",
+    "print(\"Row count after loading:\", row_count)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 106,
+   "id": "d3babc4f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Missing values per column:\n",
+      " Unnamed: 0           0\n",
+      "TransactionTime      0\n",
+      "CreditCardNumber     0\n",
+      "merchant             0\n",
+      "category             0\n",
+      "TransactionAmount    0\n",
+      "first                0\n",
+      "last                 0\n",
+      "gender               0\n",
+      "street               0\n",
+      "city                 0\n",
+      "state                0\n",
+      "zip                  0\n",
+      "lat                  0\n",
+      "long                 0\n",
+      "city_pop             0\n",
+      "job                  0\n",
+      "DateOfBirth          0\n",
+      "trans_num            0\n",
+      "unix_time            0\n",
+      "merch_lat            0\n",
+      "merch_long           0\n",
+      "is_fraud             0\n",
+      "TransactionID        0\n",
+      "dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Check for missing values\n",
+    "missing_values = df.isnull().sum()\n",
+    "print(\"Missing values per column:\\n\", missing_values)\n",
+    "\n",
+    "# no missing values"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 107,
+   "id": "5dc29333",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "is_fraud\n",
+      "0.0    1289169\n",
+      "1.0       7506\n",
+      "Name: count, dtype: int64\n",
+      "is_fraud\n",
+      "0.0    99.421135\n",
+      "1.0     0.578865\n",
+      "Name: proportion, dtype: float64\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Count of fraud and non-fraud transactions\n",
+    "fraud_counts = df['is_fraud'].value_counts()\n",
+    "print(fraud_counts)\n",
+    "\n",
+    "# Optionally, you can get it in percentage terms\n",
+    "fraud_percentage = df['is_fraud'].value_counts(normalize=True) * 100\n",
+    "print(fraud_percentage)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 108,
+   "id": "5c60dd27",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "983"
+      ]
+     },
+     "execution_count": 108,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "#how many unique credit cards in the data set ??\n",
+    "df['CreditCardNumber'].nunique()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 109,
+   "id": "391577c3",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Index(['Unnamed: 0', 'TransactionTime', 'CreditCardNumber', 'merchant',\n",
+      "       'category', 'TransactionAmount', 'first', 'last', 'gender', 'street',\n",
+      "       'city', 'state', 'zip', 'lat', 'long', 'city_pop', 'job', 'DateOfBirth',\n",
+      "       'trans_num', 'unix_time', 'merch_lat', 'merch_long', 'is_fraud',\n",
+      "       'TransactionID'],\n",
+      "      dtype='object')\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df.columns)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 110,
+   "id": "75b3c066",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Convert TransactionTime to datetime\n",
+    "df['TransactionTime'] = pd.to_datetime(df['TransactionTime'])\n",
+    "\n",
+    "# Optional: Convert DateOfBirth to datetime, if needed\n",
+    "df['DateOfBirth'] = pd.to_datetime(df['DateOfBirth'], errors='coerce')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 111,
+   "id": "52941f07",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "DatetimeIndex(['2019-01-01 00:00:18', '2019-01-01 00:00:44',\n",
+      "               '2019-01-01 00:00:51', '2019-01-01 00:01:16',\n",
+      "               '2019-01-01 00:03:06', '2019-01-01 00:04:08',\n",
+      "               '2019-01-01 00:04:42', '2019-01-01 00:05:08',\n",
+      "               '2019-01-01 00:05:18', '2019-01-01 00:06:01',\n",
+      "               ...\n",
+      "               '2020-06-21 12:08:42', '2020-06-21 12:09:22',\n",
+      "               '2020-06-21 12:10:56', '2020-06-21 12:11:23',\n",
+      "               '2020-06-21 12:11:36', '2020-06-21 12:12:08',\n",
+      "               '2020-06-21 12:12:19', '2020-06-21 12:12:32',\n",
+      "               '2020-06-21 12:13:36', '2020-06-21 12:13:37'],\n",
+      "              dtype='datetime64[ns]', name='TransactionTime', length=1296675, freq=None)\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Set 'TransactionTime' as the index permanently\n",
+    "df.set_index('TransactionTime', inplace=True)\n",
+    "\n",
+    "# Verify the index\n",
+    "print(df.index)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 112,
+   "id": "55397673",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Minimum Transaction Time: 2019-01-01 00:00:18\n",
+      "Maximum Transaction Time: 2020-06-21 12:13:37\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Get the minimum and maximum transaction times from the index\n",
+    "min_time = df.index.min()\n",
+    "max_time = df.index.max()\n",
+    "\n",
+    "print(f\"Minimum Transaction Time: {min_time}\")\n",
+    "print(f\"Maximum Transaction Time: {max_time}\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 113,
+   "id": "a1fc7ac7",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Unnamed: 0</th>\n",
+       "      <th>CreditCardNumber</th>\n",
+       "      <th>merchant</th>\n",
+       "      <th>category</th>\n",
+       "      <th>TransactionAmount</th>\n",
+       "      <th>first</th>\n",
+       "      <th>last</th>\n",
+       "      <th>gender</th>\n",
+       "      <th>street</th>\n",
+       "      <th>city</th>\n",
+       "      <th>...</th>\n",
+       "      <th>long</th>\n",
+       "      <th>city_pop</th>\n",
+       "      <th>job</th>\n",
+       "      <th>DateOfBirth</th>\n",
+       "      <th>trans_num</th>\n",
+       "      <th>unix_time</th>\n",
+       "      <th>merch_lat</th>\n",
+       "      <th>merch_long</th>\n",
+       "      <th>is_fraud</th>\n",
+       "      <th>TransactionID</th>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>TransactionTime</th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "      <th></th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>2019-01-01 00:00:18</th>\n",
+       "      <td>0.0</td>\n",
+       "      <td>2.703186e+15</td>\n",
+       "      <td>fraud_Rippin, Kub and Mann</td>\n",
+       "      <td>misc_net</td>\n",
+       "      <td>4.97</td>\n",
+       "      <td>Jennifer</td>\n",
+       "      <td>Banks</td>\n",
+       "      <td>F</td>\n",
+       "      <td>561 Perry Cove</td>\n",
+       "      <td>Moravian Falls</td>\n",
+       "      <td>...</td>\n",
+       "      <td>-81.1781</td>\n",
+       "      <td>3495.0</td>\n",
+       "      <td>Psychologist, counselling</td>\n",
+       "      <td>1988-03-09</td>\n",
+       "      <td>0b242abb623afc578575680df30655b9</td>\n",
+       "      <td>1.325376e+09</td>\n",
+       "      <td>36.011293</td>\n",
+       "      <td>-82.048315</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>1</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2019-01-01 00:00:44</th>\n",
+       "      <td>1.0</td>\n",
+       "      <td>6.304233e+11</td>\n",
+       "      <td>fraud_Heller, Gutmann and Zieme</td>\n",
+       "      <td>grocery_pos</td>\n",
+       "      <td>107.23</td>\n",
+       "      <td>Stephanie</td>\n",
+       "      <td>Gill</td>\n",
+       "      <td>F</td>\n",
+       "      <td>43039 Riley Greens Suite 393</td>\n",
+       "      <td>Orient</td>\n",
+       "      <td>...</td>\n",
+       "      <td>-118.2105</td>\n",
+       "      <td>149.0</td>\n",
+       "      <td>Special educational needs teacher</td>\n",
+       "      <td>1978-06-21</td>\n",
+       "      <td>1f76529f8574734946361c461b024d99</td>\n",
+       "      <td>1.325376e+09</td>\n",
+       "      <td>49.159047</td>\n",
+       "      <td>-118.186462</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>2</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2019-01-01 00:00:51</th>\n",
+       "      <td>2.0</td>\n",
+       "      <td>3.885949e+13</td>\n",
+       "      <td>fraud_Lind-Buckridge</td>\n",
+       "      <td>entertainment</td>\n",
+       "      <td>220.11</td>\n",
+       "      <td>Edward</td>\n",
+       "      <td>Sanchez</td>\n",
+       "      <td>M</td>\n",
+       "      <td>594 White Dale Suite 530</td>\n",
+       "      <td>Malad City</td>\n",
+       "      <td>...</td>\n",
+       "      <td>-112.2620</td>\n",
+       "      <td>4154.0</td>\n",
+       "      <td>Nature conservation officer</td>\n",
+       "      <td>1962-01-19</td>\n",
+       "      <td>a1a22d70485983eac12b5b88dad1cf95</td>\n",
+       "      <td>1.325376e+09</td>\n",
+       "      <td>43.150704</td>\n",
+       "      <td>-112.154481</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>3</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2019-01-01 00:01:16</th>\n",
+       "      <td>3.0</td>\n",
+       "      <td>3.534094e+15</td>\n",
+       "      <td>fraud_Kutch, Hermiston and Farrell</td>\n",
+       "      <td>gas_transport</td>\n",
+       "      <td>45.00</td>\n",
+       "      <td>Jeremy</td>\n",
+       "      <td>White</td>\n",
+       "      <td>M</td>\n",
+       "      <td>9443 Cynthia Court Apt. 038</td>\n",
+       "      <td>Boulder</td>\n",
+       "      <td>...</td>\n",
+       "      <td>-112.1138</td>\n",
+       "      <td>1939.0</td>\n",
+       "      <td>Patent attorney</td>\n",
+       "      <td>1967-01-12</td>\n",
+       "      <td>6b849c168bdad6f867558c3793159a81</td>\n",
+       "      <td>1.325376e+09</td>\n",
+       "      <td>47.034331</td>\n",
+       "      <td>-112.561071</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>4</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2019-01-01 00:03:06</th>\n",
+       "      <td>4.0</td>\n",
+       "      <td>3.755342e+14</td>\n",
+       "      <td>fraud_Keeling-Crist</td>\n",
+       "      <td>misc_pos</td>\n",
+       "      <td>41.96</td>\n",
+       "      <td>Tyler</td>\n",
+       "      <td>Garcia</td>\n",
+       "      <td>M</td>\n",
+       "      <td>408 Bradley Rest</td>\n",
+       "      <td>Doe Hill</td>\n",
+       "      <td>...</td>\n",
+       "      <td>-79.4629</td>\n",
+       "      <td>99.0</td>\n",
+       "      <td>Dance movement psychotherapist</td>\n",
+       "      <td>1986-03-28</td>\n",
+       "      <td>a41d7549acf90789359a9aa5346dcb46</td>\n",
+       "      <td>1.325376e+09</td>\n",
+       "      <td>38.674999</td>\n",
+       "      <td>-78.632459</td>\n",
+       "      <td>0.0</td>\n",
+       "      <td>5</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>5 rows × 23 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                     Unnamed: 0  CreditCardNumber  \\\n",
+       "TransactionTime                                     \n",
+       "2019-01-01 00:00:18         0.0      2.703186e+15   \n",
+       "2019-01-01 00:00:44         1.0      6.304233e+11   \n",
+       "2019-01-01 00:00:51         2.0      3.885949e+13   \n",
+       "2019-01-01 00:01:16         3.0      3.534094e+15   \n",
+       "2019-01-01 00:03:06         4.0      3.755342e+14   \n",
+       "\n",
+       "                                               merchant       category  \\\n",
+       "TransactionTime                                                          \n",
+       "2019-01-01 00:00:18          fraud_Rippin, Kub and Mann       misc_net   \n",
+       "2019-01-01 00:00:44     fraud_Heller, Gutmann and Zieme    grocery_pos   \n",
+       "2019-01-01 00:00:51                fraud_Lind-Buckridge  entertainment   \n",
+       "2019-01-01 00:01:16  fraud_Kutch, Hermiston and Farrell  gas_transport   \n",
+       "2019-01-01 00:03:06                 fraud_Keeling-Crist       misc_pos   \n",
+       "\n",
+       "                     TransactionAmount      first     last gender  \\\n",
+       "TransactionTime                                                     \n",
+       "2019-01-01 00:00:18               4.97   Jennifer    Banks      F   \n",
+       "2019-01-01 00:00:44             107.23  Stephanie     Gill      F   \n",
+       "2019-01-01 00:00:51             220.11     Edward  Sanchez      M   \n",
+       "2019-01-01 00:01:16              45.00     Jeremy    White      M   \n",
+       "2019-01-01 00:03:06              41.96      Tyler   Garcia      M   \n",
+       "\n",
+       "                                           street            city  ...  \\\n",
+       "TransactionTime                                                    ...   \n",
+       "2019-01-01 00:00:18                561 Perry Cove  Moravian Falls  ...   \n",
+       "2019-01-01 00:00:44  43039 Riley Greens Suite 393          Orient  ...   \n",
+       "2019-01-01 00:00:51      594 White Dale Suite 530      Malad City  ...   \n",
+       "2019-01-01 00:01:16   9443 Cynthia Court Apt. 038         Boulder  ...   \n",
+       "2019-01-01 00:03:06              408 Bradley Rest        Doe Hill  ...   \n",
+       "\n",
+       "                         long  city_pop                                job  \\\n",
+       "TransactionTime                                                              \n",
+       "2019-01-01 00:00:18  -81.1781    3495.0          Psychologist, counselling   \n",
+       "2019-01-01 00:00:44 -118.2105     149.0  Special educational needs teacher   \n",
+       "2019-01-01 00:00:51 -112.2620    4154.0        Nature conservation officer   \n",
+       "2019-01-01 00:01:16 -112.1138    1939.0                    Patent attorney   \n",
+       "2019-01-01 00:03:06  -79.4629      99.0     Dance movement psychotherapist   \n",
+       "\n",
+       "                     DateOfBirth                         trans_num  \\\n",
+       "TransactionTime                                                      \n",
+       "2019-01-01 00:00:18   1988-03-09  0b242abb623afc578575680df30655b9   \n",
+       "2019-01-01 00:00:44   1978-06-21  1f76529f8574734946361c461b024d99   \n",
+       "2019-01-01 00:00:51   1962-01-19  a1a22d70485983eac12b5b88dad1cf95   \n",
+       "2019-01-01 00:01:16   1967-01-12  6b849c168bdad6f867558c3793159a81   \n",
+       "2019-01-01 00:03:06   1986-03-28  a41d7549acf90789359a9aa5346dcb46   \n",
+       "\n",
+       "                        unix_time  merch_lat  merch_long  is_fraud  \\\n",
+       "TransactionTime                                                      \n",
+       "2019-01-01 00:00:18  1.325376e+09  36.011293  -82.048315       0.0   \n",
+       "2019-01-01 00:00:44  1.325376e+09  49.159047 -118.186462       0.0   \n",
+       "2019-01-01 00:00:51  1.325376e+09  43.150704 -112.154481       0.0   \n",
+       "2019-01-01 00:01:16  1.325376e+09  47.034331 -112.561071       0.0   \n",
+       "2019-01-01 00:03:06  1.325376e+09  38.674999  -78.632459       0.0   \n",
+       "\n",
+       "                     TransactionID  \n",
+       "TransactionTime                     \n",
+       "2019-01-01 00:00:18              1  \n",
+       "2019-01-01 00:00:44              2  \n",
+       "2019-01-01 00:00:51              3  \n",
+       "2019-01-01 00:01:16              4  \n",
+       "2019-01-01 00:03:06              5  \n",
+       "\n",
+       "[5 rows x 23 columns]"
+      ]
+     },
+     "execution_count": 113,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "df.head()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 114,
+   "id": "10777762",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Thu Oct 31 22:15:03 2024. Elapsed time: 0 minutes and 24.62 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Initial Steps Completed File Loading, Describe, Date Conversions etc..  \", start_time)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e4b32d0d",
+   "metadata": {},
+   "source": [
+    "# Feature Engineering"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 115,
+   "id": "ca771ac4",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Log pre-process time at various steps\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 116,
+   "id": "a2a6ec4c",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "START - Feature Engineering .....   completed at Thu Oct 31 22:15:03 2024. Elapsed time: 0 minutes and 0.01 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"START - Feature Engineering .....  \", start_time)\n",
+    "start_time = time.time()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 117,
+   "id": "31252f6e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# Clip outliers if necessary\n",
+    "df['TransactionAmount'] = df['TransactionAmount'].clip(upper=df['TransactionAmount'].quantile(0.99))\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 118,
+   "id": "bf9e3c7a",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/var/folders/xp/synrlbr15rx4pkqjmwqk80k80000gn/T/ipykernel_9824/1075701793.py:2: FutureWarning: A value is trying to be set on a copy of a DataFrame or Series through chained assignment using an inplace method.\n",
+      "The behavior will change in pandas 3.0. This inplace method will never work because the intermediate object on which we are setting values always behaves as a copy.\n",
+      "\n",
+      "For example, when doing 'df[col].method(value, inplace=True)', try using 'df.method({col: value}, inplace=True)' or df[col] = df[col].method(value) instead, to perform the operation inplace on the original object.\n",
+      "\n",
+      "\n",
+      "  df['TransactionAmount'].replace([np.inf, -np.inf], np.nan, inplace=True)\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "# Replace inf values with NaN (in case they exist in the 'TransactionAmount' column)\n",
+    "df['TransactionAmount'].replace([np.inf, -np.inf], np.nan, inplace=True)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2b21308e",
+   "metadata": {},
+   "source": [
+    "# next type of VIZ via transaction id vs transaction count\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 119,
+   "id": "70594f9d",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Extract hour from TransactionTime\n",
+    "df['Hour'] = df.index.hour  # Since TransactionTime is already set as the index\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 120,
+   "id": "ea729e48",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "High-Risk Hours: [22, 23, 1, 0, 2, 3]\n",
+      "                     Hour  HighRiskHour\n",
+      "TransactionTime                        \n",
+      "2019-01-01 00:00:18     0             1\n",
+      "2019-01-01 00:00:44     0             1\n",
+      "2019-01-01 00:00:51     0             1\n",
+      "2019-01-01 00:01:16     0             1\n",
+      "2019-01-01 00:03:06     0             1\n",
+      "...                   ...           ...\n",
+      "2020-06-21 12:12:08    12             0\n",
+      "2020-06-21 12:12:19    12             0\n",
+      "2020-06-21 12:12:32    12             0\n",
+      "2020-06-21 12:13:36    12             0\n",
+      "2020-06-21 12:13:37    12             0\n",
+      "\n",
+      "[1296675 rows x 2 columns]\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Calculate fraud rate by hour\n",
+    "fraud_rate_by_hour = df.groupby('Hour')['is_fraud'].mean()\n",
+    "\n",
+    "# Sort by fraud rate in descending order\n",
+    "fraud_rate_by_hour = fraud_rate_by_hour.sort_values(ascending=False)\n",
+    "\n",
+    "# Define a threshold for high-risk hours (adjust as needed)\n",
+    "threshold = fraud_rate_by_hour.mean()  # Mean fraud rate across all hours\n",
+    "\n",
+    "# Dynamically identify high-risk hours based on the threshold\n",
+    "high_risk_hours = fraud_rate_by_hour[fraud_rate_by_hour > threshold].index.tolist()\n",
+    "\n",
+    "# Print high-risk hours for reference\n",
+    "print(\"High-Risk Hours:\", high_risk_hours)\n",
+    "\n",
+    "# Create the HighRiskHour flag based on dynamically identified high-risk hours\n",
+    "df['HighRiskHour'] = df['Hour'].apply(lambda x: 1 if x in high_risk_hours else 0)\n",
+    "\n",
+    "# Print a sample of the DataFrame to verify the new column\n",
+    "print(df[['Hour', 'HighRiskHour']])\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e75736fa",
+   "metadata": {},
+   "source": [
+    "1. Time-Based Analysis:\n",
+    "Already explored daily and hourly trends in transaction volumes, but now dive deeper into fraud patterns based on time.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 121,
+   "id": "a61c0eb4",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "#Weekday vs. Weekend: Is fraud more common on weekdays or weekends?\n",
+    "df['DayOfWeek'] = df.index.dayofweek  # 0 = Monday, 6 = Sunday\n",
+    "fraud_by_day = df[df['is_fraud'] == 1]['DayOfWeek'].value_counts().sort_index()\n",
+    "non_fraud_by_day = df[df['is_fraud'] == 0]['DayOfWeek'].value_counts().sort_index()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 122,
+   "id": "f0d77fc0",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# Define the correct day order\n",
+    "day_order = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']\n",
+    "\n",
+    "\n",
+    "df['DayName'] = df.index.day_name()\n",
+    "# Convert the 'DayName' column to a categorical type with the correct order\n",
+    "df['DayName'] = pd.Categorical(df['DayName'], categories=day_order, ordered=True)\n",
+    "\n",
+    "fraud_by_day = df[df['is_fraud'] == 1]['DayName'].value_counts().sort_index()\n",
+    "non_fraud_by_day = df[df['is_fraud'] == 0]['DayName'].value_counts().sort_index()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 123,
+   "id": "3edc7f62",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Percentage of fraud on weekends: 32.55%\n",
+      "Percentage of non-fraud on weekends: 34.84%\n"
+     ]
+    }
+   ],
+   "source": [
+    "df['IsWeekend'] = df['DayOfWeek'].apply(lambda x: 1 if x >= 5 else 0)\n",
+    "weekend_fraud = df[df['is_fraud'] == 1]['IsWeekend'].mean()\n",
+    "weekend_non_fraud = df[df['is_fraud'] == 0]['IsWeekend'].mean()\n",
+    "\n",
+    "print(f\"Percentage of fraud on weekends: {weekend_fraud * 100:.2f}%\")\n",
+    "print(f\"Percentage of non-fraud on weekends: {weekend_non_fraud * 100:.2f}%\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 124,
+   "id": "67a62065",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Thu Oct 31 22:15:05 2024. Elapsed time: 0 minutes and 2.66 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Part1 - TrxAmount, Hour, DayOfWeeek etc..\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "b51d0f2e",
+   "metadata": {},
+   "source": [
+    "# Calculate distance between cardholder and merchant\n",
+    "df['distance'] = df.apply(lambda row: geodesic((row['lat'], row['long']), (row['merch_lat'], row['merch_long'])).km, axis=1)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 125,
+   "id": "1f04c2dd",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "['.DS_Store', 'v_2.0_RandomForest_Credit_Card_Fraud_Detection.ipynb', 'v_2.1_RandomForest_Balanced_SMOTE_Credit_Card_Fraud_Detection.ipynb', 'v_0.0_LogisticRegression_Credit_Card_Fraud_Detection.ipynb', '.gitkeep', '__pycache__', 'v_0.1_LogisticRegression_Balanced_Credit_Card_Fraud_Detection.ipynb', '.ipynb_checkpoints', 'v_1.0_DecisionTrees_Credit_Card_Fraud_Detection.ipynb', 'v_1.1_DecisionTrees_Credit_Card_Fraud_Detection.ipynb']\n"
+     ]
+    }
+   ],
+   "source": [
+    "import os\n",
+    "print(os.listdir())  # List all files in the current directory\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3f3a9514",
+   "metadata": {},
+   "source": [
+    "# MULTIPROCESSING : distance"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 126,
+   "id": "40c0bbf1",
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/sadhvichandragiri/opt/anaconda3/envs/ZHAW_Project/lib/python3.10/site-packages/numpy/core/fromnumeric.py:59: FutureWarning: 'DataFrame.swapaxes' is deprecated and will be removed in a future version. Please use 'DataFrame.transpose' instead.\n",
+      "  return bound(*args, **kwds)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Thu Oct 31 23:29:41 2024. Elapsed time: 74 minutes and 35.53 seconds\n",
+      "\n",
+      "                         lat      long  merch_lat  merch_long    distance\n",
+      "TransactionTime                                                          \n",
+      "2019-01-01 00:00:18  36.0788  -81.1781  36.011293  -82.048315   78.773821\n",
+      "2019-01-01 00:00:44  48.8878 -118.2105  49.159047 -118.186462   30.216618\n",
+      "2019-01-01 00:00:51  42.1808 -112.2620  43.150704 -112.154481  108.102912\n",
+      "2019-01-01 00:01:16  46.2306 -112.1138  47.034331 -112.561071   95.685115\n",
+      "2019-01-01 00:03:06  38.4207  -79.4629  38.674999  -78.632459   77.702395\n"
+     ]
+    }
+   ],
+   "source": [
+    "import pandas as pd\n",
+    "from geopy.distance import geodesic\n",
+    "import multiprocessing as mp\n",
+    "import numpy as np\n",
+    "import time\n",
+    "import sys\n",
+    "from distance_calculation import calculate_distance_chunk\n",
+    "\n",
+    "start_time = time.time()\n",
+    "\n",
+    "\n",
+    "# Add the current working directory to the system path\n",
+    "sys.path.append(os.getcwd())\n",
+    "\n",
+    "# Multiprocessing function to split the dataframe and apply the distance calculation\n",
+    "def parallel_distance_calculation(df, num_partitions=None):\n",
+    "    if num_partitions is None:\n",
+    "        num_partitions = mp.cpu_count()  # Use all available CPU cores\n",
+    "    \n",
+    "    # Split the dataframe into chunks\n",
+    "    df_split = np.array_split(df, num_partitions)\n",
+    "    \n",
+    "    # Create a multiprocessing Pool\n",
+    "    with mp.Pool(num_partitions) as pool:\n",
+    "        # Apply the calculate_distance_chunk function to each chunk in parallel\n",
+    "        result = pool.map(calculate_distance_chunk, df_split)\n",
+    "    \n",
+    "    # Concatenate the results back into a single dataframe\n",
+    "    return pd.concat(result)\n",
+    "\n",
+    "# Main block to ensure multiprocessing works correctly\n",
+    "if __name__ == \"__main__\":\n",
+    "    start_time = time.time()\n",
+    "\n",
+    "    # Assuming df has the columns ['lat', 'long', 'merch_lat', 'merch_long']\n",
+    "    \n",
+    "    # Run with limited number of cores (e.g., 4 cores)\n",
+    "    df = parallel_distance_calculation(df, num_partitions=4)  # Use 4 cores instead of all available cores\n",
+    "\n",
+    "    # Log the time taken for distance calculation with multiprocessing\n",
+    "    log_time(\"Part2 - Distance Calculation with Multiprocessing (4 cores)\", start_time)\n",
+    "\n",
+    "    # Check the first few rows to verify the result\n",
+    "    print(df[['lat', 'long', 'merch_lat', 'merch_long', 'distance']].head())\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 127,
+   "id": "7c72a4a8",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/Users/sadhvichandragiri/Desktop/coding/ZHAW_Project/ML_BigData_Repo_1/notebooks\n"
+     ]
+    }
+   ],
+   "source": [
+    "import os\n",
+    "print(os.getcwd())  # This will print the current working directory\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8f985dcd",
+   "metadata": {},
+   "source": [
+    "log_time(\"Part2 -  Distance Calculation\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 128,
+   "id": "50a155e1",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "array([0., 1.])"
+      ]
+     },
+     "execution_count": 128,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Check unique values in the 'is_fraud' column\n",
+    "df['is_fraud'].unique()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 129,
+   "id": "09d464f8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Fraud vs Non-Fraud by Merchant Category\n",
+    "fraud_by_category = df[df['is_fraud'] == 1]['category'].value_counts().head(10)\n",
+    "non_fraud_by_category = df[df['is_fraud'] == 0]['category'].value_counts().head(10)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 130,
+   "id": "07ec224f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Top Fraudulent Merchant Categories: ['grocery_pos', 'shopping_net', 'misc_net', 'shopping_pos', 'gas_transport']\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Top 5 categories with the highest fraud counts\n",
+    "top_fraud_merchant_categories = df[df['is_fraud'] == 1]['category'].value_counts().head(5).index.tolist()\n",
+    "\n",
+    "# Print top fraudulent categories\n",
+    "print(\"Top Fraudulent Merchant Categories:\", top_fraud_merchant_categories)\n",
+    "\n",
+    "# Create HighRiskMerchantCategory flag\n",
+    "df['HighRiskMerchantCategory'] = df['category'].apply(lambda x: 1 if x in top_fraud_merchant_categories else 0)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 131,
+   "id": "7780b1bb",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "HighRiskMerchantCategory\n",
+      "0    763876\n",
+      "1    532799\n",
+      "Name: count, dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Print the count of 1s and 0s in HighRiskMerchantCategory\n",
+    "print(df['HighRiskMerchantCategory'].value_counts())\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "df499da3",
+   "metadata": {},
+   "source": [
+    "# Potential Additional Features:\n",
+    "Transaction Frequency:\n",
+    "    Feature: How often a credit card has been used within a specific time frame (e.g., last hour or day).\n",
+    "    Why: Fraudsters often make rapid successive transactions within short periods. You could create a rolling window to calculate transaction frequency.\n",
+    "    How: You could calculate the number of transactions within the past X hours/days using a rolling window on the TransactionTime feature."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "828d3a0e",
+   "metadata": {},
+   "source": [
+    "#age group"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 132,
+   "id": "221b8eda",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "\n",
+    "# Ensure 'DateOfBirth' is in datetime format\n",
+    "df['DateOfBirth'] = pd.to_datetime(df['DateOfBirth'], errors='coerce')  # Handle errors during conversion\n",
+    "\n",
+    "# Step 1: Calculate Age\n",
+    "# Calculate age in years\n",
+    "df['Age'] = (pd.Timestamp.now() - df['DateOfBirth']).dt.days // 365  # Age in years\n",
+    "\n",
+    "# Step 2: Create Age Groups\n",
+    "# Define age bins and labels\n",
+    "bins = [0, 18, 25, 35, 45, 55, 65, 100]  # Define your age bins, ensuring to cover all possible ages\n",
+    "labels = ['0-18', '19-25', '26-35', '36-45', '46-55', '56-65', '66+']  # Corresponding labels\n",
+    "\n",
+    "# Create age group feature, include NaN values handling\n",
+    "df['AgeGroup'] = pd.cut(df['Age'], bins=bins, labels=labels, right=False, include_lowest=True)\n",
+    "\n",
+    "# Verify the new features without truncating DataFrame\n",
+    "#print(df[['DateOfBirth', 'Age', 'AgeGroup']].head(10))  # Display the first 10 entries\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 133,
+   "id": "296a6aa7",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part3 - Merchant Categories & Age group completed at Thu Oct 31 23:29:42 2024. Elapsed time: 74 minutes and 36.99 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Part3 - Merchant Categories & Age group\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "19dc4c6f",
+   "metadata": {},
+   "source": [
+    "RapidTransactionFlag"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "8e07efaf",
+   "metadata": {},
+   "source": [
+    "def count_transactions_within_last_hour(group):\n",
+    "    # Create an empty list to hold the frequencies\n",
+    "    frequencies = []\n",
+    "    \n",
+    "    # Loop over each transaction time in the group\n",
+    "    for time in group.index:\n",
+    "        # Count the number of transactions within the last hour\n",
+    "        count = group[(group.index >= (time - pd.Timedelta(hours=1))) & (group.index <= time)].shape[0]\n",
+    "        frequencies.append(count)\n",
+    "    \n",
+    "    return frequencies\n",
+    "\n",
+    "# Apply the function to each group\n",
+    "df['TransactionFrequency'] = df.groupby('CreditCardNumber').apply(count_transactions_within_last_hour).reset_index(drop=True)\n",
+    "print(df[['TransactionFrequency']].head(10))  # Display the first 10 entries\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "39bc72de",
+   "metadata": {},
+   "source": [
+    "# MULTIPROCESSING : count_transactions_within_last_hour"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 134,
+   "id": "620555a5",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/Users/sadhvichandragiri/opt/anaconda3/envs/ZHAW_Project/lib/python3.10/site-packages/numpy/core/fromnumeric.py:59: FutureWarning: 'DataFrame.swapaxes' is deprecated and will be removed in a future version. Please use 'DataFrame.transpose' instead.\n",
+      "  return bound(*args, **kwds)\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part4 - TransactionFrequency Multiprocessing completed at Fri Nov  1 00:27:31 2024. Elapsed time: 57 minutes and 48.38 seconds\n",
+      "\n",
+      "                    TransactionFrequency\n",
+      "TransactionTime                         \n",
+      "2019-01-01 00:00:18                  NaN\n",
+      "2019-01-01 00:00:44                  NaN\n",
+      "2019-01-01 00:00:51                  NaN\n",
+      "2019-01-01 00:01:16                  NaN\n",
+      "2019-01-01 00:03:06                  NaN\n",
+      "2019-01-01 00:04:08                  NaN\n",
+      "2019-01-01 00:04:42                  NaN\n",
+      "2019-01-01 00:05:08                  NaN\n",
+      "2019-01-01 00:05:18                  NaN\n",
+      "2019-01-01 00:06:01                  NaN\n"
+     ]
+    }
+   ],
+   "source": [
+    "import pandas as pd\n",
+    "import multiprocessing as mp\n",
+    "import numpy as np\n",
+    "import time\n",
+    "from transaction_frequency import process_chunk  # Import from the .py file\n",
+    "\n",
+    "# Multiprocessing function to parallelize the transaction counting\n",
+    "def parallel_count_transactions(df, num_partitions=None):\n",
+    "    if num_partitions is None:\n",
+    "        num_partitions = mp.cpu_count()  # Use all available CPU cores\n",
+    "    \n",
+    "    # Ensure the index is a datetime\n",
+    "    df.index = pd.to_datetime(df.index)\n",
+    "    \n",
+    "    # Split the dataframe into chunks based on the number of partitions (CPU cores)\n",
+    "    df_split = np.array_split(df, num_partitions)\n",
+    "    \n",
+    "    # Create a multiprocessing Pool\n",
+    "    with mp.Pool(num_partitions) as pool:\n",
+    "        # Apply the processing function to each chunk in parallel\n",
+    "        result = pool.map(process_chunk, df_split)\n",
+    "    \n",
+    "    # Combine the results from each chunk into a single series, reset index for consistency\n",
+    "    return pd.concat(result).reset_index(drop=True)\n",
+    "\n",
+    "# Assuming df has 'CreditCardNumber' as a column and transaction times are indexed\n",
+    "if __name__ == \"__main__\":\n",
+    "    start_time = time.time()\n",
+    "\n",
+    "    # Apply the parallel processing for transaction frequency counting\n",
+    "    df['TransactionFrequency'] = parallel_count_transactions(df, num_partitions=4)  # Adjust num_partitions as needed\n",
+    "\n",
+    "    # Log the time taken for transaction frequency calculation with multiprocessing\n",
+    "    log_time(\"Part4 - TransactionFrequency Multiprocessing\", start_time)\n",
+    "\n",
+    "    # Check the first 10 rows\n",
+    "    print(df[['TransactionFrequency']].head(10))\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 135,
+   "id": "f3e571f3",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "DatetimeIndex(['2019-01-01 00:00:18', '2019-01-01 00:00:44',\n",
+      "               '2019-01-01 00:00:51', '2019-01-01 00:01:16',\n",
+      "               '2019-01-01 00:03:06', '2019-01-01 00:04:08',\n",
+      "               '2019-01-01 00:04:42', '2019-01-01 00:05:08',\n",
+      "               '2019-01-01 00:05:18', '2019-01-01 00:06:01',\n",
+      "               ...\n",
+      "               '2020-06-21 12:08:42', '2020-06-21 12:09:22',\n",
+      "               '2020-06-21 12:10:56', '2020-06-21 12:11:23',\n",
+      "               '2020-06-21 12:11:36', '2020-06-21 12:12:08',\n",
+      "               '2020-06-21 12:12:19', '2020-06-21 12:12:32',\n",
+      "               '2020-06-21 12:13:36', '2020-06-21 12:13:37'],\n",
+      "              dtype='datetime64[ns]', name='TransactionTime', length=1296675, freq=None)\n"
+     ]
+    }
+   ],
+   "source": [
+    "df.index = pd.to_datetime(df.index)\n",
+    "print(df.index)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "96249ca1",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 136,
+   "id": "dadb160e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/var/folders/xp/synrlbr15rx4pkqjmwqk80k80000gn/T/ipykernel_9824/1490275857.py:2: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.\n",
+      "  transaction_counts_hourly = df.resample('H').size()\n",
+      "/var/folders/xp/synrlbr15rx4pkqjmwqk80k80000gn/T/ipykernel_9824/1490275857.py:6: FutureWarning: 'H' is deprecated and will be removed in a future version, please use 'h' instead.\n",
+      "  transaction_counts = df.groupby('CreditCardNumber').resample('H').size().reset_index(name='TransactionCount')\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "   CreditCardNumber     TransactionTime  TransactionCount\n",
+      "0      6.041621e+10 2019-01-01 12:00:00                 1\n",
+      "1      6.041621e+10 2019-01-01 13:00:00                 0\n",
+      "2      6.041621e+10 2019-01-01 14:00:00                 0\n",
+      "3      6.041621e+10 2019-01-01 15:00:00                 0\n",
+      "4      6.041621e+10 2019-01-01 16:00:00                 0\n",
+      "5      6.041621e+10 2019-01-01 17:00:00                 0\n",
+      "6      6.041621e+10 2019-01-01 18:00:00                 0\n",
+      "7      6.041621e+10 2019-01-01 19:00:00                 0\n",
+      "8      6.041621e+10 2019-01-01 20:00:00                 0\n",
+      "9      6.041621e+10 2019-01-01 21:00:00                 0\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Resample the data to count transactions every hour\n",
+    "transaction_counts_hourly = df.resample('H').size()\n",
+    "transaction_counts_daily = df.resample('D').size()\n",
+    "\n",
+    "# Combine with CreditCardNumber if necessary\n",
+    "transaction_counts = df.groupby('CreditCardNumber').resample('H').size().reset_index(name='TransactionCount')\n",
+    "print(transaction_counts.head(10))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 137,
+   "id": "97c19713",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "   CreditCardNumber  TotalTransactionCount\n",
+      "0      6.041621e+10                   1518\n",
+      "1      6.042293e+10                   1531\n",
+      "2      6.042310e+10                    510\n",
+      "3      6.042785e+10                    528\n",
+      "4      6.048700e+10                    496\n",
+      "5      6.049060e+10                   1010\n",
+      "6      6.049559e+10                    518\n",
+      "7      5.018030e+11                   1559\n",
+      "8      5.018181e+11                      8\n",
+      "9      5.018282e+11                    515\n"
+     ]
+    }
+   ],
+   "source": [
+    "total_transactions = df.groupby('CreditCardNumber').size().reset_index(name='TotalTransactionCount')\n",
+    "print(total_transactions.head(10))\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 138,
+   "id": "aef71d2a",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "2019-01-01    1960\n",
+      "2019-01-02     606\n",
+      "2019-01-03     701\n",
+      "2019-01-04     952\n",
+      "2019-01-05     879\n",
+      "              ... \n",
+      "2020-06-17    1327\n",
+      "2020-06-18    1547\n",
+      "2020-06-19    1966\n",
+      "2020-06-20    1910\n",
+      "2020-06-21    1142\n",
+      "Length: 537, dtype: int64\n",
+      "         Unnamed: 0  CreditCardNumber  TransactionAmount           zip  \\\n",
+      "count  1.061083e+06      1.061083e+06       1.061083e+06  1.061083e+06   \n",
+      "mean   6.541777e+05      4.168739e+17       6.463842e+01  4.881377e+04   \n",
+      "min    1.000000e+00      6.041621e+10       1.000000e+00  1.257000e+03   \n",
+      "25%    3.399115e+05      1.800429e+14       9.500000e+00  2.623700e+04   \n",
+      "50%    6.543810e+05      3.521417e+15       4.635000e+01  4.817400e+04   \n",
+      "75%    9.639775e+05      4.642255e+15       8.223000e+01  7.204200e+04   \n",
+      "max    1.296674e+06      4.992346e+18       5.459926e+02  9.978300e+04   \n",
+      "std    3.688933e+05      1.308438e+18       8.254229e+01  2.689496e+04   \n",
+      "\n",
+      "                lat          long      city_pop  \\\n",
+      "count  1.061083e+06  1.061083e+06  1.061083e+06   \n",
+      "mean   3.853009e+01 -9.022821e+01  8.979136e+04   \n",
+      "min    2.002710e+01 -1.656723e+02  2.300000e+01   \n",
+      "25%    3.459060e+01 -9.679800e+01  7.430000e+02   \n",
+      "50%    3.935430e+01 -8.747690e+01  2.470000e+03   \n",
+      "75%    4.194040e+01 -8.015800e+01  2.047800e+04   \n",
+      "max    6.669330e+01 -6.795030e+01  2.906700e+06   \n",
+      "std    5.078796e+00  1.374857e+01  3.041541e+05   \n",
+      "\n",
+      "                         DateOfBirth     unix_time     merch_lat  \\\n",
+      "count                        1061083  1.061083e+06  1.061083e+06   \n",
+      "mean   1974-01-07 01:53:43.193284640  1.349452e+09  3.853026e+01   \n",
+      "min              1924-10-30 00:00:00  1.325376e+09  1.902779e+01   \n",
+      "25%              1962-12-06 00:00:00  1.339269e+09  3.471879e+01   \n",
+      "50%              1975-12-28 00:00:00  1.349484e+09  3.935917e+01   \n",
+      "75%              1987-05-05 00:00:00  1.359010e+09  4.195454e+01   \n",
+      "max              2005-01-29 00:00:00  1.371817e+09  6.751027e+01   \n",
+      "std                              NaN  1.264150e+07  5.112969e+00   \n",
+      "\n",
+      "         merch_long      is_fraud  TransactionID          Hour  HighRiskHour  \\\n",
+      "count  1.061083e+06  1.061083e+06   1.061083e+06  1.061083e+06  1.061083e+06   \n",
+      "mean  -9.022814e+01  5.652715e-03   6.541787e+05  1.323944e+01  2.301988e-01   \n",
+      "min   -1.666701e+02  0.000000e+00   2.000000e+00  0.000000e+00  0.000000e+00   \n",
+      "25%   -9.689874e+01  0.000000e+00   3.399125e+05  8.000000e+00  0.000000e+00   \n",
+      "50%   -8.744732e+01  0.000000e+00   6.543820e+05  1.400000e+01  0.000000e+00   \n",
+      "75%   -8.024346e+01  0.000000e+00   9.639785e+05  1.900000e+01  0.000000e+00   \n",
+      "max   -6.695090e+01  1.000000e+00   1.296675e+06  2.300000e+01  1.000000e+00   \n",
+      "std    1.376070e+01  7.497178e-02   3.688933e+05  6.727723e+00  4.209602e-01   \n",
+      "\n",
+      "          DayOfWeek     IsWeekend      distance  HighRiskMerchantCategory  \\\n",
+      "count  1.061083e+06  1.061083e+06  1.061083e+06              1.061083e+06   \n",
+      "mean   3.092014e+00  3.698118e-01  7.611910e+01              3.897716e-01   \n",
+      "min    0.000000e+00  0.000000e+00  2.227351e-02              0.000000e+00   \n",
+      "25%    1.000000e+00  0.000000e+00  5.535721e+01              0.000000e+00   \n",
+      "50%    3.000000e+00  0.000000e+00  7.827691e+01              0.000000e+00   \n",
+      "75%    5.000000e+00  1.000000e+00  9.849232e+01              1.000000e+00   \n",
+      "max    6.000000e+00  1.000000e+00  1.518682e+02              1.000000e+00   \n",
+      "std    2.263057e+00  4.827538e-01  2.909755e+01              4.876986e-01   \n",
+      "\n",
+      "                Age  \n",
+      "count  1.061083e+06  \n",
+      "mean   5.035780e+01  \n",
+      "min    1.900000e+01  \n",
+      "25%    3.700000e+01  \n",
+      "50%    4.800000e+01  \n",
+      "75%    6.100000e+01  \n",
+      "max    1.000000e+02  \n",
+      "std    1.738319e+01  \n"
+     ]
+    }
+   ],
+   "source": [
+    "# Calculate the time difference between consecutive transactions\n",
+    "time_diff = df.index.to_series().diff().dt.total_seconds()\n",
+    "# Flag rapid transactions (within 5 minutes)\n",
+    "df['RapidTransactionFlag'] = time_diff < 60  # For a 1-minute threshold\n",
+    "\n",
+    "# Create a temporary DataFrame for rapid transactions\n",
+    "rapid_transactions = df[df['RapidTransactionFlag']]\n",
+    "\n",
+    "# Group by date and count the number of rapid transactions\n",
+    "rapid_transaction_counts = rapid_transactions.groupby(rapid_transactions.index.date).size()\n",
+    "print(rapid_transaction_counts)\n",
+    "\n",
+    "# Get a summary of the rapid transactions\n",
+    "rapid_transactions_summary = rapid_transactions.describe()\n",
+    "print(rapid_transactions_summary)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 139,
+   "id": "64e05375",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Index(['Unnamed: 0', 'CreditCardNumber', 'merchant', 'category',\n",
+      "       'TransactionAmount', 'first', 'last', 'gender', 'street', 'city',\n",
+      "       'state', 'zip', 'lat', 'long', 'city_pop', 'job', 'DateOfBirth',\n",
+      "       'trans_num', 'unix_time', 'merch_lat', 'merch_long', 'is_fraud',\n",
+      "       'TransactionID', 'Hour', 'HighRiskHour', 'DayOfWeek', 'DayName',\n",
+      "       'IsWeekend', 'distance', 'HighRiskMerchantCategory', 'Age', 'AgeGroup',\n",
+      "       'TransactionFrequency', 'RapidTransactionFlag'],\n",
+      "      dtype='object')\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df.columns)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 140,
+   "id": "bca5e448",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part5 - RapidTransactionFlag completed at Fri Nov  1 00:27:51 2024. Elapsed time: 58 minutes and 8.70 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Part5 - RapidTransactionFlag\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "eb3b200c",
+   "metadata": {},
+   "source": [
+    "Transaction Amount Features:\n",
+    "Log Transaction Amount: Normalize the TransactionAmount by taking its logarithm to reduce skewness.\n",
+    "Transaction Amount Flags: Create binary flags for high-value transactions (e.g., if TransactionAmount exceeds a certain threshold)."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 141,
+   "id": "da75a878",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                     TransactionAmount  LogTransactionAmount  \\\n",
+      "TransactionTime                                                \n",
+      "2019-01-01 00:00:18               4.97              1.786747   \n",
+      "2019-01-01 00:00:44             107.23              4.684259   \n",
+      "2019-01-01 00:00:51             220.11              5.398660   \n",
+      "2019-01-01 00:01:16              45.00              3.828641   \n",
+      "2019-01-01 00:03:06              41.96              3.760269   \n",
+      "2019-01-01 00:04:08              94.63              4.560487   \n",
+      "2019-01-01 00:04:42              44.54              3.818591   \n",
+      "2019-01-01 00:05:08              71.65              4.285653   \n",
+      "2019-01-01 00:05:18               4.27              1.662030   \n",
+      "2019-01-01 00:06:01             198.39              5.295263   \n",
+      "\n",
+      "                     HighValueTransactionFlag  \n",
+      "TransactionTime                                \n",
+      "2019-01-01 00:00:18                     False  \n",
+      "2019-01-01 00:00:44                      True  \n",
+      "2019-01-01 00:00:51                      True  \n",
+      "2019-01-01 00:01:16                     False  \n",
+      "2019-01-01 00:03:06                     False  \n",
+      "2019-01-01 00:04:08                     False  \n",
+      "2019-01-01 00:04:42                     False  \n",
+      "2019-01-01 00:05:08                     False  \n",
+      "2019-01-01 00:05:18                     False  \n",
+      "2019-01-01 00:06:01                      True  \n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "# Sample DataFrame creation\n",
+    "# Assume 'df' is your DataFrame and has a 'TransactionAmount' column\n",
+    "# df = pd.read_csv('your_data.csv')  # Load your actual data\n",
+    "\n",
+    "# Step 1: Log Transaction Amount\n",
+    "# Calculate the log of TransactionAmount\n",
+    "df['LogTransactionAmount'] = np.log1p(df['TransactionAmount'])  # Use log1p for stability with 0 values\n",
+    "\n",
+    "# Step 2: Create Transaction Amount Flags\n",
+    "# Define a threshold for high-value transactions\n",
+    "threshold = 100  # Adjust the threshold based on your data context\n",
+    "\n",
+    "# Create a flag for high-value transactions\n",
+    "df['HighValueTransactionFlag'] = df['TransactionAmount'] > threshold\n",
+    "\n",
+    "# Verify the new features\n",
+    "print(df[['TransactionAmount', 'LogTransactionAmount', 'HighValueTransactionFlag']].head(10))  # Display the first 10 entries\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e217bc43",
+   "metadata": {},
+   "source": [
+    "Behavioral Features:\n",
+    "Count of Transactions in Last X Days: Count how many transactions have occurred in the last 7, 14, or 30 days.\n",
+    "Average Transaction Amount in Last X Days: Calculate the average transaction amount over the same periods."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 142,
+   "id": "25aeefda",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "                     TransactionCountLast7Days  TransactionCountLast14Days  \\\n",
+      "TransactionTime                                                              \n",
+      "2019-01-01 12:47:15                        1.0                         1.0   \n",
+      "2019-01-02 08:44:57                        2.0                         2.0   \n",
+      "2019-01-02 08:47:36                        3.0                         3.0   \n",
+      "2019-01-02 12:38:14                        4.0                         4.0   \n",
+      "2019-01-02 13:10:46                        5.0                         5.0   \n",
+      "2019-01-03 13:56:35                        6.0                         6.0   \n",
+      "2019-01-03 17:05:10                        7.0                         7.0   \n",
+      "2019-01-04 13:59:55                        8.0                         8.0   \n",
+      "2019-01-04 21:17:22                        9.0                         9.0   \n",
+      "2019-01-05 00:42:24                       10.0                        10.0   \n",
+      "\n",
+      "                     TransactionCountLast30Days  \\\n",
+      "TransactionTime                                   \n",
+      "2019-01-01 12:47:15                         1.0   \n",
+      "2019-01-02 08:44:57                         2.0   \n",
+      "2019-01-02 08:47:36                         3.0   \n",
+      "2019-01-02 12:38:14                         4.0   \n",
+      "2019-01-02 13:10:46                         5.0   \n",
+      "2019-01-03 13:56:35                         6.0   \n",
+      "2019-01-03 17:05:10                         7.0   \n",
+      "2019-01-04 13:59:55                         8.0   \n",
+      "2019-01-04 21:17:22                         9.0   \n",
+      "2019-01-05 00:42:24                        10.0   \n",
+      "\n",
+      "                     AverageTransactionAmountLast7Days  \\\n",
+      "TransactionTime                                          \n",
+      "2019-01-01 12:47:15                           7.270000   \n",
+      "2019-01-02 08:44:57                          30.105000   \n",
+      "2019-01-02 08:47:36                          47.430000   \n",
+      "2019-01-02 12:38:14                          44.270000   \n",
+      "2019-01-02 13:10:46                          40.852000   \n",
+      "2019-01-03 13:56:35                          35.188333   \n",
+      "2019-01-03 17:05:10                          31.365714   \n",
+      "2019-01-04 13:59:55                          42.083750   \n",
+      "2019-01-04 21:17:22                          40.378889   \n",
+      "2019-01-05 00:42:24                          46.861000   \n",
+      "\n",
+      "                     AverageTransactionAmountLast14Days  \\\n",
+      "TransactionTime                                           \n",
+      "2019-01-01 12:47:15                            7.270000   \n",
+      "2019-01-02 08:44:57                           30.105000   \n",
+      "2019-01-02 08:47:36                           47.430000   \n",
+      "2019-01-02 12:38:14                           44.270000   \n",
+      "2019-01-02 13:10:46                           40.852000   \n",
+      "2019-01-03 13:56:35                           35.188333   \n",
+      "2019-01-03 17:05:10                           31.365714   \n",
+      "2019-01-04 13:59:55                           42.083750   \n",
+      "2019-01-04 21:17:22                           40.378889   \n",
+      "2019-01-05 00:42:24                           46.861000   \n",
+      "\n",
+      "                     AverageTransactionAmountLast30Days  \n",
+      "TransactionTime                                          \n",
+      "2019-01-01 12:47:15                            7.270000  \n",
+      "2019-01-02 08:44:57                           30.105000  \n",
+      "2019-01-02 08:47:36                           47.430000  \n",
+      "2019-01-02 12:38:14                           44.270000  \n",
+      "2019-01-02 13:10:46                           40.852000  \n",
+      "2019-01-03 13:56:35                           35.188333  \n",
+      "2019-01-03 17:05:10                           31.365714  \n",
+      "2019-01-04 13:59:55                           42.083750  \n",
+      "2019-01-04 21:17:22                           40.378889  \n",
+      "2019-01-05 00:42:24                           46.861000  \n"
+     ]
+    }
+   ],
+   "source": [
+    "import pandas as pd\n",
+    "\n",
+    "# Assuming 'TransactionTime' is already set as the index and in datetime format\n",
+    "\n",
+    "# Step 1: Count of Transactions in Last X Days\n",
+    "for days in [7, 14, 30]:\n",
+    "    # Sort data by CreditCardNumber and TransactionTime to ensure rolling works properly\n",
+    "    df = df.sort_values(by=['CreditCardNumber', 'TransactionTime'])\n",
+    "    \n",
+    "    # Apply rolling and count the number of transactions for each card\n",
+    "    df[f'TransactionCountLast{days}Days'] = (\n",
+    "        df.groupby('CreditCardNumber')['CreditCardNumber']\n",
+    "        .rolling(f'{days}D')\n",
+    "        .count()\n",
+    "        .reset_index(level=0, drop=True)\n",
+    "    )\n",
+    "\n",
+    "# Step 2: Average Transaction Amount in Last X Days\n",
+    "for days in [7, 14, 30]:\n",
+    "    # Sort data by CreditCardNumber and TransactionTime to ensure rolling works properly\n",
+    "    df = df.sort_values(by=['CreditCardNumber', 'TransactionTime'])\n",
+    "    \n",
+    "    # Calculate the average transaction amount for each credit card in the last X days\n",
+    "    df[f'AverageTransactionAmountLast{days}Days'] = (\n",
+    "        df.groupby('CreditCardNumber')['TransactionAmount']\n",
+    "        .rolling(f'{days}D')\n",
+    "        .mean()\n",
+    "        .reset_index(level=0, drop=True)\n",
+    "    )\n",
+    "\n",
+    "# Verify the new features\n",
+    "print(df[['TransactionCountLast7Days', 'TransactionCountLast14Days', 'TransactionCountLast30Days',\n",
+    "           'AverageTransactionAmountLast7Days', 'AverageTransactionAmountLast14Days', 'AverageTransactionAmountLast30Days']].head(10))\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 143,
+   "id": "ebcd77cc",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Index(['Unnamed: 0', 'CreditCardNumber', 'merchant', 'category',\n",
+      "       'TransactionAmount', 'first', 'last', 'gender', 'street', 'city',\n",
+      "       'state', 'zip', 'lat', 'long', 'city_pop', 'job', 'DateOfBirth',\n",
+      "       'trans_num', 'unix_time', 'merch_lat', 'merch_long', 'is_fraud',\n",
+      "       'TransactionID', 'Hour', 'HighRiskHour', 'DayOfWeek', 'DayName',\n",
+      "       'IsWeekend', 'distance', 'HighRiskMerchantCategory', 'Age', 'AgeGroup',\n",
+      "       'TransactionFrequency', 'RapidTransactionFlag', 'LogTransactionAmount',\n",
+      "       'HighValueTransactionFlag', 'TransactionCountLast7Days',\n",
+      "       'TransactionCountLast14Days', 'TransactionCountLast30Days',\n",
+      "       'AverageTransactionAmountLast7Days',\n",
+      "       'AverageTransactionAmountLast14Days',\n",
+      "       'AverageTransactionAmountLast30Days'],\n",
+      "      dtype='object')\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df.columns)  # Display all columns in the DataFrame\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 144,
+   "id": "bc639c6e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Fri Nov  1 00:45:15 2024. Elapsed time: 17 minutes and 23.56 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "2b0a24a1",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3b4aaef3",
+   "metadata": {},
+   "source": [
+    "# Graph Construction with NetworkX:"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "18793de2",
+   "metadata": {},
+   "source": [
+    "Highlight Fraudulent Nodes: Overlay of fraudulent and non-fraudulent credit cards on this degree distribution to see if there’s a difference in their degrees."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 145,
+   "id": "e26bd1d5",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Number of unique credit card nodes: 983\n",
+      "Number of unique merchant nodes: 693\n",
+      "Number of credit card nodes with degrees: 983\n",
+      "Number of merchant nodes with degrees: 693\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "\n",
+    "# Create an empty graph\n",
+    "G = nx.Graph()\n",
+    "\n",
+    "# Add edges between credit cards and merchants, including transaction amount as an edge attribute\n",
+    "for idx, row in df.iterrows():\n",
+    "    credit_card = str(row['CreditCardNumber'])\n",
+    "    merchant = str(row['merchant'])\n",
+    "    transaction_amount = row['TransactionAmount']  # Ensure TransactionAmount exists in your dataframe\n",
+    "    \n",
+    "    # Add an edge with the transaction amount as an attribute\n",
+    "    G.add_edge(credit_card, merchant, transaction_amount=transaction_amount)\n",
+    "\n",
+    "\n",
+    "# Calculate degrees for all nodes in the graph\n",
+    "degrees = dict(G.degree())\n",
+    "\n",
+    "# Filter degrees for credit cards and merchants\n",
+    "credit_card_nodes = df['CreditCardNumber'].astype(str).unique()\n",
+    "merchant_nodes = df['merchant'].astype(str).unique()\n",
+    "\n",
+    "credit_card_degrees = {node: degrees[node] for node in credit_card_nodes if node in degrees}\n",
+    "merchant_degrees = {node: degrees[node] for node in merchant_nodes if node in degrees}\n",
+    "\n",
+    "# Debugging: Print counts to ensure correctness\n",
+    "print(f\"Number of unique credit card nodes: {len(credit_card_nodes)}\")\n",
+    "print(f\"Number of unique merchant nodes: {len(merchant_nodes)}\")\n",
+    "print(f\"Number of credit card nodes with degrees: {len(credit_card_degrees)}\")\n",
+    "print(f\"Number of merchant nodes with degrees: {len(merchant_degrees)}\")\n",
+    "\n",
+    "# Create a new DataFrame for easier plotting\n",
+    "degree_df = pd.DataFrame({\n",
+    "    'CreditCardDegree': pd.Series(credit_card_degrees),\n",
+    "    'MerchantDegree': pd.Series(merchant_degrees)\n",
+    "})\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 146,
+   "id": "a55584fd",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Add degree information back to the original DataFrame\n",
+    "df['degree'] = df['CreditCardNumber'].astype(str).map(credit_card_degrees)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 147,
+   "id": "6a8f6116",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Check edges and their attributes\n",
+    "#for edge in G.edges(data=True):\n",
+    "#    print(edge)\n",
+    "\n",
+    "#do NOT print this, huge list\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 148,
+   "id": "a9c525e6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df['CreditCardNumber'] = df['CreditCardNumber'].astype(str)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 149,
+   "id": "5115524e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "fraud_mapping = df.set_index('CreditCardNumber')['is_fraud'].to_dict()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 150,
+   "id": "f9e261bf",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part7 - NetworkX Start Step completed at Fri Nov  1 00:48:12 2024. Elapsed time: 2 minutes and 56.90 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Part7 - NetworkX Start Step\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "baa04d62",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 151,
+   "id": "e509da70",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#print(fraud_mapping.head(5))\n",
+    "#only testing purposes"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "167571cb",
+   "metadata": {},
+   "source": [
+    "betweenness_centrality"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "0093ce9f",
+   "metadata": {},
+   "source": [
+    "# Calculate betweenness centrality\n",
+    "betweenness_centrality = nx.betweenness_centrality(G)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "57ac75df",
+   "metadata": {},
+   "source": [
+    "# MULTIPROCESSING : betweenness_centrality"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 152,
+   "id": "50d69fea",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Fri Nov  1 02:32:38 2024. Elapsed time: 104 minutes and 26.51 seconds\n",
+      "\n",
+      "[('60416207185.0', 3.903743365141523e-05), ('fraud_Jones, Sawayn and Romaguera', 0.00016718121427278148), ('fraud_Berge LLC', 0.0003731639453736409), ('fraud_Luettgen PLC', 0.0002880918347168189), ('fraud_Daugherty LLC', 0.00026296051041424566), ('fraud_Beier and Sons', 0.00025675424900787366), ('fraud_Stamm-Witting', 0.00021600459190031658), ('fraud_Conroy-Emard', 0.00021409812196013464), ('fraud_Pollich LLC', 0.00029566515903354184), ('fraud_Monahan-Morar', 0.0002101294467358623)]\n"
+     ]
+    }
+   ],
+   "source": [
+    "import networkx as nx\n",
+    "import time\n",
+    "from networkx_graph_betweeness_centrality import parallel_betweenness_centrality\n",
+    "\n",
+    "# Assuming G is your graph\n",
+    "if __name__ == \"__main__\":\n",
+    "    start_time = time.time()\n",
+    "\n",
+    "    # Calculate betweenness centrality using parallel processing\n",
+    "    betweenness_centrality = parallel_betweenness_centrality(G, num_partitions=4)  # Adjust number of cores if needed\n",
+    "\n",
+    "    # Log the time taken for betweenness centrality calculation with multiprocessing\n",
+    "    log_time(\"Part8 - Betweenness Centrality Calculation with Multiprocessing\", start_time)\n",
+    "\n",
+    "    # Check a few centrality values\n",
+    "    print(list(betweenness_centrality.items())[:10])\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "4e7b4462",
+   "metadata": {},
+   "source": [
+    "import os\n",
+    "print(os.listdir())\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 153,
+   "id": "85bd6fad",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "df['betweenness_centrality'] = df['CreditCardNumber'].map(betweenness_centrality)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 154,
+   "id": "fb8bf772",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "count    1.296675e+06\n",
+      "mean     4.163569e-05\n",
+      "std      1.178525e-05\n",
+      "min      2.728628e-09\n",
+      "25%      3.630433e-05\n",
+      "50%      4.399435e-05\n",
+      "75%      5.147284e-05\n",
+      "max      5.736748e-05\n",
+      "Name: betweenness_centrality, dtype: float64\n",
+      "0\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df['betweenness_centrality'].describe())\n",
+    "print(df['betweenness_centrality'].isna().sum())  # Check for missing values\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 155,
+   "id": "e5e4b947",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "60416207185: None\n",
+      "fraud_Kutch-Ferry: 0.00026288184139774875\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Check betweenness centrality for specific credit card numbers\n",
+    "sample_nodes = ['60416207185', 'fraud_Kutch-Ferry']  # Replace with actual nodes\n",
+    "for node in sample_nodes:\n",
+    "    print(f\"{node}: {betweenness_centrality.get(node)}\")\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "a33a0b35",
+   "metadata": {},
+   "source": [
+    "log_time(\"Part8 - Feature Engineering -- NetworkX betweenness_centrality\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "439124c6",
+   "metadata": {},
+   "source": [
+    "1. Investigate Nodes with High Betweenness Centrality:\n",
+    "\n",
+    "Now that you’ve visualized nodes with high betweenness centrality, you can:\n",
+    "\n",
+    "    Examine if fraudulent nodes tend to have high betweenness centrality. This might indicate that these nodes are acting as \"connectors\" between different parts of the network, which could be a sign of suspicious behavior.\n",
+    "    Compare centrality between fraud and non-fraud nodes to see if there's a pattern.\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b13fdd8e",
+   "metadata": {},
+   "source": [
+    "2. Visualize Communities in the Network:\n",
+    "\n",
+    "You could apply community detection to uncover fraud rings or clusters of merchants targeted by fraudsters. The Louvain algorithm is great for this."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 156,
+   "id": "b5f148a5",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import community.community_louvain as community_louvain\n",
+    "\n",
+    "\n",
+    "# Apply Louvain method for community detection\n",
+    "partition = community_louvain.best_partition(G)\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "aee872fb",
+   "metadata": {},
+   "source": [
+    "Fraud Node Highlighting:\n",
+    "\n",
+    "    Fraudulent nodes (from df['is_fraud'] == 1) are colored red to make them stand out. The rest of the nodes are still colored based on their communities.\n",
+    "    This should help you easily spot any fraudulent nodes in the network.\n",
+    "\n",
+    "Top 10 Most Central Nodes:\n",
+    "\n",
+    "    We calculate betweenness centrality and extract the top 10 most central nodes.\n",
+    "    These nodes are visualized with their connections, which should help declutter the graph and focus on the key players in the transaction network."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 157,
+   "id": "8fd26394",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# Apply Louvain method for community detection\n",
+    "partition = community_louvain.best_partition(G)\n",
+    "\n",
+    "# Create positions for nodes using a spring layout\n",
+    "pos = nx.spring_layout(G)\n",
+    "\n",
+    "# Add the community information to the DataFrame\n",
+    "df['community'] = df['CreditCardNumber'].map(partition)\n",
+    "\n",
+    "# Highlight fraud nodes separately\n",
+    "fraud_nodes = df[df['is_fraud'] == 1]['CreditCardNumber'].values\n",
+    "\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 158,
+   "id": "95613930",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Add the community information to the DataFrame\n",
+    "df['community'] = df['CreditCardNumber'].map(partition)\n",
+    "\n",
+    "# Calculate the percentage of fraud in each community\n",
+    "community_fraud = df.groupby('community')['is_fraud'].mean()\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 159,
+   "id": "d9407a0e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "community\n",
+      "0    0.009397\n",
+      "1    0.003918\n",
+      "2    0.005928\n",
+      "Name: is_fraud, dtype: float64\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "# Print fraud rate per community\n",
+    "print(community_fraud)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 160,
+   "id": "17572504",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "community\n",
+      "0    291697\n",
+      "1    593383\n",
+      "2    411595\n",
+      "dtype: int64\n"
+     ]
+    }
+   ],
+   "source": [
+    "community_size = df.groupby('community').size()\n",
+    "print(community_size)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 161,
+   "id": "43cca311",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Combine fraud rates and community sizes into a single DataFrame\n",
+    "fraud_vs_size = pd.concat([community_fraud, df.groupby('community').size()], axis=1)\n",
+    "fraud_vs_size.columns = ['FraudRate', 'CommunitySize']\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 162,
+   "id": "accbc68f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "community\n",
+      "0    0.009397\n",
+      "2    0.005928\n",
+      "1    0.003918\n",
+      "Name: is_fraud, dtype: float64\n"
+     ]
+    }
+   ],
+   "source": [
+    "top_fraud_communities = community_fraud.sort_values(ascending=False).head(5)\n",
+    "print(top_fraud_communities)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 163,
+   "id": "4a875aea",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Get the community labels of the top fraud communities\n",
+    "top_community_labels = top_fraud_communities.index.tolist()\n",
+    "\n",
+    "# Filter the DataFrame for only the top fraud communities\n",
+    "top_communities_df = df[df['community'].isin(top_community_labels)]\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 164,
+   "id": "88b0bb95",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "merchant\n",
+      "fraud_Kozey-Boehm                       0.025723\n",
+      "fraud_Herman, Treutel and Dickens       0.025385\n",
+      "fraud_Kerluke-Abshire                   0.022307\n",
+      "fraud_Brown PLC                         0.022109\n",
+      "fraud_Goyette Inc                       0.021616\n",
+      "fraud_Terry-Huel                        0.021543\n",
+      "fraud_Jast Ltd                          0.021505\n",
+      "fraud_Schmeler, Bashirian and Price     0.020833\n",
+      "fraud_Boyer-Reichert                    0.019916\n",
+      "fraud_Langworth, Boehm and Gulgowski    0.019807\n",
+      "Name: is_fraud, dtype: float64\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Show Only the Top Merchants by Fraud Rate:\n",
+    "# Instead of displaying all merchants, you can filter the plot to show only the top 10 or 20 merchants with the highest fraud rates.\n",
+    "\n",
+    "# Calculate fraud rate by merchant in the top fraud communities\n",
+    "merchant_fraud_rate = top_communities_df.groupby('merchant')['is_fraud'].mean()\n",
+    "\n",
+    "# Sort merchants by fraud rate in descending order\n",
+    "top_merchants = merchant_fraud_rate.sort_values(ascending=False).head(10)\n",
+    "\n",
+    "# Print top 10 merchants with highest fraud rate\n",
+    "print(top_merchants)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 165,
+   "id": "bbd1dc14",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# Assuming 'category' is a column representing merchant categories\n",
+    "merchantcategory_fraud = top_communities_df.groupby('category')['is_fraud'].mean()\n",
+    "\n",
+    "# Sort the fraud rate by merchant category in descending order\n",
+    "merchantcategory_fraud_sorted = merchantcategory_fraud.sort_values(ascending=False)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 166,
+   "id": "2e7c000f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part9 - Community & Top Merchants completed at Fri Nov  1 02:53:39 2024. Elapsed time: 125 minutes and 27.78 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "\n",
+    "log_time(\"Part9 - Community & Top Merchants\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 167,
+   "id": "154aa31d",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Graph Density: 0.34130445623909095\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Check the density of the graph (a measure of sparsity)\n",
+    "density = nx.density(G)\n",
+    "print(f\"Graph Density: {density}\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 168,
+   "id": "5e360c64",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Average Degree of Nodes: 571.6849642004773\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Calculate and print the average degree\n",
+    "degree_sequence = [degree for node, degree in G.degree()]\n",
+    "average_degree = sum(degree_sequence) / len(degree_sequence)\n",
+    "print(f\"Average Degree of Nodes: {average_degree}\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 169,
+   "id": "5fa3b21e",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part10 - Density completed at Fri Nov  1 02:53:39 2024. Elapsed time: 0 minutes and 0.02 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Part10 - Density\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ed6bcacc",
+   "metadata": {},
+   "source": [
+    "The results you’ve provided show:\n",
+    "\n",
+    "    Graph Density: 0.2513\n",
+    "        This is a moderate density value. A density of 0 would indicate a completely disconnected graph, while a value close to 1 would indicate a very tightly connected graph (like a clique). A density of 0.25 means about 25% of the possible connections between nodes are present, which suggests the graph isn’t overly sparse, but it’s not densely connected either.\n",
+    "\n",
+    "    Average Degree: 406.18\n",
+    "        This is relatively high, meaning that, on average, each node (credit card or merchant) is connected to about 406 other nodes. This high degree could indicate that nodes, especially credit cards, are interacting with many merchants. However, these connections are likely not forming closed loops or triangles, which is why the clustering coefficient is zero for all nodes.\n",
+    "\n",
+    "What This Means:\n",
+    "\n",
+    "    Even though the average degree is high, suggesting that credit cards are interacting with many merchants, the interactions are likely not forming triangles (where connected nodes are also connected to each other). This results in zero clustering coefficients across the board.\n",
+    "\n",
+    "    The moderate graph density indicates that the network is connected to some extent, but not densely enough to produce high clustering coefficients.\n",
+    "\n",
+    "Why This Happens:\n",
+    "\n",
+    "In transaction networks, it’s common for credit cards to interact with different merchants, but merchants don’t typically transact with each other, which means closed triangles (required for a non-zero clustering coefficient) are rare. In fraud detection, this is normal, as fraudsters typically transact with many distinct merchants rather than creating highly connected communities.\n",
+    "Next Steps:\n",
+    "\n",
+    "Given the moderate density and high degree of the nodes, the clustering coefficient might not be the most insightful metric. Instead, you could focus on the following:\n",
+    "1. Focus on Betweenness Centrality and Degree:\n",
+    "\n",
+    "These metrics are more likely to highlight key nodes (e.g., credit cards or merchants) that are crucial in the transaction network. You’ve already calculated betweenness centrality, and the average degree indicates that some credit cards or merchants might have a significant number of connections.\n",
+    "2. Look for Key Nodes (High Degree or Centrality):\n",
+    "\n",
+    "You could identify nodes with high degree or betweenness centrality to see if they’re involved in fraudulent transactions."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 170,
+   "id": "452804a2",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Index(['Unnamed: 0', 'CreditCardNumber', 'merchant', 'category',\n",
+      "       'TransactionAmount', 'first', 'last', 'gender', 'street', 'city',\n",
+      "       'state', 'zip', 'lat', 'long', 'city_pop', 'job', 'DateOfBirth',\n",
+      "       'trans_num', 'unix_time', 'merch_lat', 'merch_long', 'is_fraud',\n",
+      "       'TransactionID', 'Hour', 'HighRiskHour', 'DayOfWeek', 'DayName',\n",
+      "       'IsWeekend', 'distance', 'HighRiskMerchantCategory', 'Age', 'AgeGroup',\n",
+      "       'TransactionFrequency', 'RapidTransactionFlag', 'LogTransactionAmount',\n",
+      "       'HighValueTransactionFlag', 'TransactionCountLast7Days',\n",
+      "       'TransactionCountLast14Days', 'TransactionCountLast30Days',\n",
+      "       'AverageTransactionAmountLast7Days',\n",
+      "       'AverageTransactionAmountLast14Days',\n",
+      "       'AverageTransactionAmountLast30Days', 'degree',\n",
+      "       'betweenness_centrality', 'community'],\n",
+      "      dtype='object')\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df.columns)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "64c450de",
+   "metadata": {},
+   "source": [
+    "Given that you only identified 4 nodes with the lowest betweenness centrality, and they are all disconnected, it seems that focusing on these low-centrality nodes isn’t providing much value for your analysis. This could indicate that these nodes (credit card numbers or merchants) are peripheral and not involved in significant patterns of interaction, and therefore, might not contribute meaningful insights for detecting fraud.\n",
+    "Should You Continue with Low Betweenness Centrality Nodes?\n",
+    "\n",
+    "    Disconnected Nodes: Since the nodes with the lowest betweenness centrality are disconnected and few in number, they don't seem to play a crucial role in the transaction network.\n",
+    "    Low Utility: If these nodes don't show fraud or aren't involved in key transactions, they might not be useful for your model or analysis.\n",
+    "\n",
+    "What to Do Next:\n",
+    "\n",
+    "    Abandon the Focus on Low Betweenness Centrality:\n",
+    "        Since these nodes are disconnected and don't seem to offer useful insights, it might be better to abandon the focus on low betweenness centrality.\n",
+    "        Instead, focus on nodes with more centrality (betweenness, degree, etc.) or explore other graph features.\n",
+    "\n",
+    "    Explore Other Graph Metrics:\n",
+    "\n",
+    "        You can shift your focus to more meaningful metrics such as pagerank or eigenvector centrality, which may reveal more about the influence or importance of nodes in the network.\n",
+    "\n",
+    "        Here's how you can calculate pagerank and analyze it:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 171,
+   "id": "d5be3c6a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "selected_features = [\n",
+    "    'TransactionAmount', 'LogTransactionAmount', 'HighValueTransactionFlag',\n",
+    "    'TransactionCountLast7Days', 'TransactionCountLast14Days', 'TransactionCountLast30Days',\n",
+    "    'AverageTransactionAmountLast7Days', 'AverageTransactionAmountLast14Days', 'AverageTransactionAmountLast30Days',\n",
+    "    'Hour', 'HighRiskHour', 'DayOfWeek', 'IsWeekend', 'TransactionFrequency', 'RapidTransactionFlag',\n",
+    "    'lat', 'long', 'merch_lat', 'merch_long', 'distance', 'city_pop',\n",
+    "    'Age', 'AgeGroup', 'gender', 'state', 'city',\n",
+    "    'degree', 'betweenness_centrality', 'community'\n",
+    "]\n",
+    "\n",
+    "df_selected_features = df[selected_features]\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "51f21f1e",
+   "metadata": {},
+   "source": [
+    "# Page rank as new feature"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 172,
+   "id": "6fda32dc",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Calculate PageRank for each node in the graph\n",
+    "pagerank = nx.pagerank(G)\n",
+    "\n",
+    "# Map the PageRank values to the 'CreditCardNumber' in the DataFrame\n",
+    "df['pagerank'] = df['CreditCardNumber'].map(pagerank)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 173,
+   "id": "53596e20",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "0\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Check for NaN values in the pagerank column\n",
+    "print(df['pagerank'].isna().sum())\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 174,
+   "id": "f5e2620b",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "count    1.296675e+06\n",
+      "mean     5.971670e-04\n",
+      "std      7.856303e-05\n",
+      "min      9.478567e-05\n",
+      "25%      5.812104e-04\n",
+      "50%      6.195727e-04\n",
+      "75%      6.566711e-04\n",
+      "max      6.834763e-04\n",
+      "Name: pagerank, dtype: float64\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Check descriptive statistics of pagerank values\n",
+    "print(df['pagerank'].describe())\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 175,
+   "id": "a525047f",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Number of nodes with zero PageRank: 0\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Check how many nodes have a PageRank of zero\n",
+    "zero_pagerank_count = (df['pagerank'] == 0).sum()\n",
+    "print(f\"Number of nodes with zero PageRank: {zero_pagerank_count}\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 176,
+   "id": "c97f80b2",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Average PageRank for Fraud: 0.000505843602201983\n",
+      "Average PageRank for Non-Fraud: 0.0005976986758972222\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Compare the average PageRank for fraud and non-fraud transactions\n",
+    "fraud_avg_pagerank = df[df['is_fraud'] == 1]['pagerank'].mean()\n",
+    "non_fraud_avg_pagerank = df[df['is_fraud'] == 0]['pagerank'].mean()\n",
+    "\n",
+    "print(f\"Average PageRank for Fraud: {fraud_avg_pagerank}\")\n",
+    "print(f\"Average PageRank for Non-Fraud: {non_fraud_avg_pagerank}\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 177,
+   "id": "47121274",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "selected_features.append('pagerank')\n",
+    "df_selected_features = df[selected_features]\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 178,
+   "id": "439c0ecd",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Index(['TransactionAmount', 'LogTransactionAmount', 'HighValueTransactionFlag',\n",
+      "       'TransactionCountLast7Days', 'TransactionCountLast14Days',\n",
+      "       'TransactionCountLast30Days', 'AverageTransactionAmountLast7Days',\n",
+      "       'AverageTransactionAmountLast14Days',\n",
+      "       'AverageTransactionAmountLast30Days', 'Hour', 'HighRiskHour',\n",
+      "       'DayOfWeek', 'IsWeekend', 'TransactionFrequency',\n",
+      "       'RapidTransactionFlag', 'lat', 'long', 'merch_lat', 'merch_long',\n",
+      "       'distance', 'city_pop', 'Age', 'AgeGroup', 'gender', 'state', 'city',\n",
+      "       'degree', 'betweenness_centrality', 'community', 'pagerank'],\n",
+      "      dtype='object')\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df_selected_features.columns)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 179,
+   "id": "ae9a67f2",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(1296675, 46)\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(df.shape)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 180,
+   "id": "a89b08a0",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Part11 - PageRank completed at Fri Nov  1 02:53:42 2024. Elapsed time: 0 minutes and 2.65 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"Part11 - PageRank\", start_time)\n",
+    "start_time = time.time()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 181,
+   "id": "e17cecc8",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# Decision Trees start"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 182,
+   "id": "56237852",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "END - Feature Engineering .....   completed at Fri Nov  1 02:53:42 2024. Elapsed time: 0 minutes and 0.01 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"END - Feature Engineering .....  \", start_time)\n",
+    "start_time = time.time()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8ac908b1",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 183,
+   "id": "163f30c6",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "START - Random Forest with DASK .....   completed at Fri Nov  1 02:53:42 2024. Elapsed time: 0 minutes and 0.01 seconds\n",
+      "\n"
+     ]
+    }
+   ],
+   "source": [
+    "log_time(\"START - Random Forest with DASK .....  \", start_time)\n",
+    "start_time = time.time()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "14312bfe",
+   "metadata": {},
+   "source": [
+    "Close the dASK Client"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "5cfb0245",
+   "metadata": {},
+   "source": [
+    "from dask.distributed import Client\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.metrics import accuracy_score, classification_report\n",
+    "import dask.dataframe as dd\n",
+    "import pandas as pd\n",
+    "import os\n",
+    "\n",
+    "# Start Dask client\n",
+    "client = Client()\n",
+    "\n",
+    "# Define directory paths and other configurations\n",
+    "reports_output_dir = \"/path/to/reports\"  # Define the directory to save reports\n",
+    "dataset_type = \"train\" if not use_test_data else \"test\"  # Set based on evaluation type\n",
+    "\n",
+    "# Load and preprocess function for both train and test datasets\n",
+    "def load_and_preprocess(data_source):\n",
+    "    X = df[selected_features]\n",
+    "    y = df['is_fraud']\n",
+    "    \n",
+    "    # Convert to Dask, categorize, one-hot encode, then back to Pandas\n",
+    "    X = dd.from_pandas(X, npartitions=5).categorize()\n",
+    "    X = dd.get_dummies(X, drop_first=True).compute()  # Convert Dask DataFrame to Pandas\n",
+    "    y = dd.from_pandas(y, npartitions=5).compute()  # Convert Dask Series to Pandas\n",
+    "    return X, y\n",
+    "\n",
+    "# Model training and evaluation\n",
+    "if use_test_data:\n",
+    "    # Load and preprocess test data\n",
+    "    X_test, y_test = load_and_preprocess(f\"{input_src_dir}/fraudTest.csv\")\n",
+    "    \n",
+    "    # Evaluate on test data\n",
+    "    y_test_pred = model.predict(X_test)\n",
+    "    test_accuracy = accuracy_score(y_test, y_test_pred)\n",
+    "    print(\"Accuracy on test data:\", test_accuracy)\n",
+    "    \n",
+    "    # Generate classification report for test data\n",
+    "    clf_report = classification_report(y_test, y_test_pred)\n",
+    "    print(\"Classification Report: \" , clf_report)\n",
+    "    \n",
+    "else:\n",
+    "    # Load and preprocess train data\n",
+    "    X_train, y_train = load_and_preprocess(df)\n",
+    "\n",
+    "    # Train Random Forest model on train data\n",
+    "    model = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=42)\n",
+    "    model.fit(X_train, y_train)\n",
+    "\n",
+    "    # Evaluate on train data\n",
+    "    y_train_pred = model.predict(X_train)\n",
+    "    train_accuracy = accuracy_score(y_train, y_train_pred)\n",
+    "    print(\"Accuracy on train data:\", train_accuracy)\n",
+    "    \n",
+    "    # Generate classification report for train data\n",
+    "    clf_report = classification_report(y_train, y_train_pred)\n",
+    "    print(\"Classification Report: \", clf_report)\n",
+    "    accuracy = train_accuracy if not use_test_data else test_accuracy\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ae06ffb1",
+   "metadata": {},
+   "source": [
+    "# The following worked wonderfully"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "f1397cdc",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e5b0002c",
+   "metadata": {},
+   "source": [
+    "Optimize Feature Set: Consider focusing more on these top features to streamline the model, which could reduce noise and potentially improve generalization.\n",
+    "\n",
+    "Interaction Features: You might explore interaction terms (e.g., combining distance with high transaction amounts) if you suspect relationships between features could capture more nuanced patterns."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "77296bcd",
+   "metadata": {},
+   "source": [
+    "# the below code with optimized features also worked great"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "483581ed",
+   "metadata": {},
+   "source": [
+    "def load_and_preprocess(df, selected_features, sample_fraction=1.0):\n",
+    "    # Filter `selected_features` to include only columns available in `df`\n",
+    "    selected_features = [col for col in selected_features if col in df.columns]\n",
+    "    \n",
+    "    # Sample a fraction of the data for debugging if needed\n",
+    "    if sample_fraction < 1.0:\n",
+    "        df = df.sample(frac=sample_fraction, random_state=42)\n",
+    "    \n",
+    "    X = df[selected_features].copy()\n",
+    "    y = df['is_fraud'].copy()\n",
+    "\n",
+    "    # Define numeric and categorical features explicitly\n",
+    "    numeric_features = [\n",
+    "        'TransactionAmount', 'LogTransactionAmount', 'TransactionCountLast7Days', \n",
+    "        'TransactionCountLast14Days', 'TransactionCountLast30Days', \n",
+    "        'AverageTransactionAmountLast7Days', 'AverageTransactionAmountLast14Days', \n",
+    "        'AverageTransactionAmountLast30Days', 'lat', 'long', 'merch_lat', \n",
+    "        'merch_long', 'distance', 'city_pop', 'degree', 'betweenness_centrality'\n",
+    "    ]\n",
+    "    \n",
+    "    categorical_features = [\n",
+    "        'HighValueTransactionFlag', 'HighRiskHour', 'IsWeekend', 'AgeGroup', \n",
+    "        'gender', 'state', 'city', 'community', 'TransactionFrequency'\n",
+    "    ]\n",
+    "    \n",
+    "    # Use only the numeric and categorical columns available in `X`\n",
+    "    numeric_features = [col for col in numeric_features if col in X.columns]\n",
+    "    categorical_features = [col for col in categorical_features if col in X.columns]\n",
+    "    \n",
+    "    # Convert each numeric column to numeric type and fill NaNs with mean\n",
+    "    for col in numeric_features:\n",
+    "        X[col] = pd.to_numeric(X[col], errors='coerce')  # Convert to numeric, coerce errors to NaN\n",
+    "        X[col] = X[col].fillna(X[col].mean())  # Fill NaNs with mean for each column\n",
+    "\n",
+    "    # Convert categorical columns to 'category' dtype and fill NaNs with \"Unknown\"\n",
+    "    for col in categorical_features:\n",
+    "        X[col] = X[col].astype(\"category\")\n",
+    "        X[col] = X[col].cat.add_categories(\"Unknown\").fillna(\"Unknown\")\n",
+    "\n",
+    "    # Convert to Dask DataFrame\n",
+    "    X = dd.from_pandas(X, npartitions=5)\n",
+    "\n",
+    "    # Explicitly categorize all categorical columns\n",
+    "    X = X.categorize(columns=categorical_features)\n",
+    "\n",
+    "    # Apply one-hot encoding to categorized columns without immediately computing\n",
+    "    X = dd.get_dummies(X, drop_first=True)\n",
+    "\n",
+    "    return X, y\n",
+    "\n",
+    "# Define optimized features\n",
+    "optimized_features = [\n",
+    "    'LogTransactionAmount', 'merch_lat', 'AverageTransactionAmountLast14Days',\n",
+    "    'TransactionAmount', 'distance', 'merch_long', \n",
+    "    'AverageTransactionAmountLast7Days', 'AverageTransactionAmountLast30Days',\n",
+    "    'TransactionCountLast30Days', 'TransactionCountLast7Days'\n",
+    "]\n",
+    "\n",
+    "# Load and preprocess with optimized features and handle missing columns automatically\n",
+    "X_train, y_train = load_and_preprocess(df, optimized_features, sample_fraction=0.4)\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7fadf382",
+   "metadata": {},
+   "source": [
+    "import pandas as pd\n",
+    "import dask.dataframe as dd\n",
+    "from dask_ml.wrappers import ParallelPostFit\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, accuracy_score, classification_report\n",
+    "from imblearn.over_sampling import SMOTE\n",
+    "from sklearn.utils import resample\n",
+    "import matplotlib.pyplot as plt\n",
+    "import os\n",
+    "\n",
+    "# Define the function for loading and preprocessing\n",
+    "def load_and_preprocess(df, selected_features, sample_fraction=1.0):\n",
+    "    # Sample a fraction of the data for debugging if needed\n",
+    "    if sample_fraction < 1.0:\n",
+    "        df = df.sample(frac=sample_fraction, random_state=42)\n",
+    "    \n",
+    "    X = df[selected_features].copy()\n",
+    "    y = df['is_fraud'].copy()\n",
+    "\n",
+    "    # Define numeric and categorical features explicitly\n",
+    "    numeric_features = [\n",
+    "        'TransactionAmount', 'LogTransactionAmount', 'TransactionCountLast7Days', \n",
+    "        'TransactionCountLast14Days', 'TransactionCountLast30Days', \n",
+    "        'AverageTransactionAmountLast7Days', 'AverageTransactionAmountLast14Days', \n",
+    "        'AverageTransactionAmountLast30Days', 'lat', 'long', 'merch_lat', \n",
+    "        'merch_long', 'distance', 'city_pop', 'degree', 'betweenness_centrality'\n",
+    "    ]\n",
+    "    categorical_features = [\n",
+    "        'HighValueTransactionFlag', 'HighRiskHour', 'IsWeekend', 'AgeGroup', \n",
+    "        'gender', 'state', 'city', 'community', 'TransactionFrequency'\n",
+    "    ]\n",
+    "\n",
+    "    # Convert numeric columns to numeric type and fill NaNs with mean\n",
+    "    for col in numeric_features:\n",
+    "        X[col] = pd.to_numeric(X[col], errors='coerce')\n",
+    "        X[col] = X[col].fillna(X[col].mean())\n",
+    "\n",
+    "    # Convert categorical columns to 'category' dtype and fill NaNs with \"Unknown\"\n",
+    "    for col in categorical_features:\n",
+    "        X[col] = X[col].astype(\"category\")\n",
+    "        X[col] = X[col].cat.add_categories(\"Unknown\").fillna(\"Unknown\")\n",
+    "\n",
+    "    # Convert to Dask DataFrame for parallel processing\n",
+    "    X = dd.from_pandas(X, npartitions=5)\n",
+    "    X = X.categorize(columns=categorical_features)\n",
+    "    X = dd.get_dummies(X, drop_first=True)\n",
+    "\n",
+    "    return X, y\n",
+    "\n",
+    "# Initialize model\n",
+    "model = ParallelPostFit(estimator=RandomForestClassifier(n_estimators=100, max_depth=20, random_state=42, class_weight='balanced'))\n",
+    "\n",
+    "# Model training and evaluation\n",
+    "if use_test_data:\n",
+    "    # Load and preprocess test data\n",
+    "    X_test, y_test = load_and_preprocess(df, selected_features)\n",
+    "    X_test = X_test.compute()  # Convert X_test to Pandas for prediction\n",
+    "    y_test = y_test.reset_index(drop=True)\n",
+    "\n",
+    "    # Evaluate on test data\n",
+    "    y_test_pred = model.predict(X_test)\n",
+    "    test_accuracy = accuracy_score(y_test, y_test_pred)\n",
+    "    print(\"Accuracy on test data:\", test_accuracy)\n",
+    "    \n",
+    "    # Classification report\n",
+    "    clf_report = classification_report(y_test, y_test_pred)\n",
+    "    print(\"Classification Report:\", clf_report)\n",
+    "\n",
+    "    # Calculate AUC-ROC\n",
+    "    roc_auc = roc_auc_score(y_test, y_test_pred)\n",
+    "    print(\"ROC AUC Score on test data:\", roc_auc)\n",
+    "\n",
+    "    # Calculate Precision-Recall curve\n",
+    "    precision, recall, thresholds = precision_recall_curve(y_test, y_test_pred)\n",
+    "    pr_auc = auc(recall, precision)\n",
+    "    print(\"Precision-Recall AUC on test data:\", pr_auc)\n",
+    "\n",
+    "    # Plot Precision-Recall curve\n",
+    "    plt.figure(figsize=(10, 6))\n",
+    "    plt.plot(recall, precision, marker='.', label='Precision-Recall Curve (Test)')\n",
+    "    plt.xlabel('Recall')\n",
+    "    plt.ylabel('Precision')\n",
+    "    roc_title = 'Random Forest with DASK Balanced & SMOTE - Precision-Recall Curve for Test Set'\n",
+    "    plt.title(roc_title)\n",
+    "    plt.legend()\n",
+    "    plt.show()\n",
+    "\n",
+    "else:\n",
+    "    # Load and preprocess train data\n",
+    "    X_train, y_train = load_and_preprocess(df, selected_features, sample_fraction=0.4)\n",
+    "\n",
+    "\n",
+    "    X_train = X_train.compute().reset_index(drop=True)  # Convert X_train to Pandas and reset index\n",
+    "    y_train = y_train.reset_index(drop=True)  # Reset y_train index for alignment\n",
+    "\n",
+    "    # **Downsample and SMOTE Upsample**\n",
+    "    fraud = X_train[y_train == 1]\n",
+    "    non_fraud = X_train[y_train == 0]\n",
+    "    non_fraud_downsampled = resample(non_fraud, replace=False, n_samples=len(fraud), random_state=42)\n",
+    "    X_resampled = pd.concat([fraud, non_fraud_downsampled])\n",
+    "    y_resampled = pd.concat([y_train[y_train == 1], y_train[y_train == 0].sample(n=len(fraud), random_state=42)])\n",
+    "\n",
+    "    # Apply SMOTE on resampled data\n",
+    "    smote = SMOTE(random_state=42)\n",
+    "    X_smote, y_smote = smote.fit_resample(X_resampled, y_resampled)\n",
+    "\n",
+    "    # Train model\n",
+    "    model.fit(X_smote, y_smote)\n",
+    "\n",
+    "    # Evaluate on train data\n",
+    "    y_train_pred = model.predict(X_smote)\n",
+    "    train_accuracy = accuracy_score(y_smote, y_train_pred)\n",
+    "    print(\"Accuracy on train data:\", train_accuracy)\n",
+    "    \n",
+    "    # Classification report\n",
+    "    clf_report = classification_report(y_smote, y_train_pred)\n",
+    "    print(\"Classification Report:\", clf_report)\n",
+    "\n",
+    "    # Calculate AUC-ROC\n",
+    "    roc_auc = roc_auc_score(y_smote, y_train_pred)\n",
+    "    print(\"ROC AUC Score on train data:\", roc_auc)\n",
+    "\n",
+    "    # Calculate Precision-Recall curve\n",
+    "    precision, recall, thresholds = precision_recall_curve(y_smote, y_train_pred)\n",
+    "    pr_auc = auc(recall, precision)\n",
+    "    print(\"Precision-Recall AUC on train data:\", pr_auc)\n",
+    "\n",
+    "    # Plot Precision-Recall curve\n",
+    "    plt.figure(figsize=(10, 6))\n",
+    "    plt.plot(recall, precision, marker='.', label='Precision-Recall Curve (Train)')\n",
+    "    plt.xlabel('Recall')\n",
+    "    plt.ylabel('Precision')\n",
+    "    roc_title = 'Random Forest with DASK Balanced & SMOTE - Precision-Recall Curve for Train Set'\n",
+    "    plt.title(roc_title)\n",
+    "    plt.legend()\n",
+    "    plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d5491b29",
+   "metadata": {},
+   "source": [
+    "# now with interaction features"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0497c4d5",
+   "metadata": {},
+   "source": [
+    "\n",
+    "from joblib import dump\n",
+    "model_output_dir = '/Users/sadhvichandragiri/desktop/coding/ZHAW_Project/ML_BigData_Repo_1/models'\n",
+    "model_path = f\"{model_output_dir}/train_random_forest_with_dask_balanced_&_smote_model_.pkl\"\n",
+    "\n",
+    "model = load(model_path)\n",
+    "print(\"Model loaded successfully.\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "a231e1b3",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "print(use_test_data)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "9f524a95",
+   "metadata": {},
+   "source": [
+    "#Load_and_preprocess with all features:\n",
+    "\n",
+    "from itertools import combinations\n",
+    "import pandas as pd\n",
+    "\n",
+    "def load_and_preprocess(df, selected_features, sample_fraction=1.0):\n",
+    "    # Filter `selected_features` to include only columns available in `df`\n",
+    "    selected_features = [col for col in selected_features if col in df.columns]\n",
+    "    \n",
+    "    # Sample a fraction of the data for debugging if needed\n",
+    "    if sample_fraction < 1.0:\n",
+    "        df = df.sample(frac=sample_fraction, random_state=42)\n",
+    "    \n",
+    "    X = df[selected_features].copy()\n",
+    "    y = df['is_fraud'].copy()\n",
+    "\n",
+    "    # Define numeric and categorical features explicitly\n",
+    "    numeric_features = [\n",
+    "        'TransactionAmount', 'LogTransactionAmount', 'TransactionCountLast7Days', \n",
+    "        'TransactionCountLast14Days', 'TransactionCountLast30Days', \n",
+    "        'AverageTransactionAmountLast7Days', 'AverageTransactionAmountLast14Days', \n",
+    "        'AverageTransactionAmountLast30Days', 'lat', 'long', 'merch_lat', \n",
+    "        'merch_long', 'distance', 'city_pop', 'degree', 'betweenness_centrality'\n",
+    "    ]\n",
+    "    \n",
+    "    categorical_features = [\n",
+    "        'HighValueTransactionFlag', 'HighRiskHour', 'IsWeekend', 'AgeGroup', \n",
+    "        'gender', 'state', 'city', 'community', 'TransactionFrequency'\n",
+    "    ]\n",
+    "    \n",
+    "    # Use only the numeric and categorical columns available in `X`\n",
+    "    numeric_features = [col for col in numeric_features if col in X.columns]\n",
+    "    categorical_features = [col for col in categorical_features if col in X.columns]\n",
+    "    \n",
+    "    # Convert each numeric column to numeric type and fill NaNs with mean\n",
+    "    for col in numeric_features:\n",
+    "        X[col] = pd.to_numeric(X[col], errors='coerce')  # Convert to numeric, coerce errors to NaN\n",
+    "        X[col] = X[col].fillna(X[col].mean())  # Fill NaNs with mean for each column\n",
+    "\n",
+    "    # Convert categorical columns to 'category' dtype and fill NaNs with \"Unknown\"\n",
+    "    for col in categorical_features:\n",
+    "        X[col] = X[col].astype(\"category\")\n",
+    "        X[col] = X[col].cat.add_categories(\"Unknown\").fillna(\"Unknown\")\n",
+    "\n",
+    "    # Convert to Dask DataFrame\n",
+    "    X = dd.from_pandas(X, npartitions=5)\n",
+    "\n",
+    "    # Explicitly categorize all categorical columns\n",
+    "    X = X.categorize(columns=categorical_features)\n",
+    "\n",
+    "    # Apply one-hot encoding to categorized columns without immediately computing\n",
+    "    X = dd.get_dummies(X, drop_first=True)\n",
+    "\n",
+    "    return X, y"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 189,
+   "id": "e3cd6ef9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#Load_and_preprocess with OPTIMIZED features:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 198,
+   "id": "568aaafa",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "   LogTransactionAmount  merch_lat  AverageTransactionAmountLast14Days  \\\n",
+      "0              2.578701  40.690796                           98.861391   \n",
+      "1              4.423648  42.385281                           43.375000   \n",
+      "2              4.948050  39.177470                           48.283448   \n",
+      "3              3.822536  30.891903                           70.851364   \n",
+      "4              0.879627  36.325665                           84.200952   \n",
+      "\n",
+      "   TransactionAmount    distance  merch_long  \\\n",
+      "0              12.18   83.098901  -74.829762   \n",
+      "1              82.40   90.094689  -73.966216   \n",
+      "2             139.90   62.458662  -76.354422   \n",
+      "3              44.72  108.913926  -90.683774   \n",
+      "4               1.41   87.658062  -80.165213   \n",
+      "\n",
+      "   AverageTransactionAmountLast7Days  AverageTransactionAmountLast30Days  \\\n",
+      "0                         109.868104                           81.803088   \n",
+      "1                          48.071818                           43.590536   \n",
+      "2                          52.177500                           51.800435   \n",
+      "3                          72.943929                           64.911111   \n",
+      "4                          85.599259                           83.844733   \n",
+      "\n",
+      "   TransactionCountLast30Days  TransactionCountLast7Days  ...  \\\n",
+      "0                        98.0                       25.0  ...   \n",
+      "1                        56.0                       11.0  ...   \n",
+      "2                       138.0                       24.0  ...   \n",
+      "3                        63.0                       28.0  ...   \n",
+      "4                       158.0                       27.0  ...   \n",
+      "\n",
+      "   merch_long_x_AverageTransactionAmountLast7Days  \\\n",
+      "0                                    -8221.404074   \n",
+      "1                                    -3555.690487   \n",
+      "2                                    -3983.982854   \n",
+      "3                                    -6614.830733   \n",
+      "4                                    -6862.082851   \n",
+      "\n",
+      "   merch_long_x_AverageTransactionAmountLast30Days  \\\n",
+      "0                                     -6121.305588   \n",
+      "1                                     -3224.226980   \n",
+      "2                                     -3955.192257   \n",
+      "3                                     -5886.384530   \n",
+      "4                                     -6721.430873   \n",
+      "\n",
+      "   merch_long_x_TransactionCountLast30Days  \\\n",
+      "0                             -7333.316676   \n",
+      "1                             -4142.108096   \n",
+      "2                            -10536.910236   \n",
+      "3                             -5713.077762   \n",
+      "4                            -12666.103654   \n",
+      "\n",
+      "   merch_long_x_TransactionCountLast7Days  \\\n",
+      "0                            -1870.744050   \n",
+      "1                             -813.628376   \n",
+      "2                            -1832.506128   \n",
+      "3                            -2539.145672   \n",
+      "4                            -2164.460751   \n",
+      "\n",
+      "   AverageTransactionAmountLast7Days_x_AverageTransactionAmountLast30Days  \\\n",
+      "0                                        8987.550153                        \n",
+      "1                                        2095.476307                        \n",
+      "2                                        2702.817186                        \n",
+      "3                                        4734.871452                        \n",
+      "4                                        7177.047030                        \n",
+      "\n",
+      "   AverageTransactionAmountLast7Days_x_TransactionCountLast30Days  \\\n",
+      "0                                       10767.074192                \n",
+      "1                                        2692.021818                \n",
+      "2                                        7200.495000                \n",
+      "3                                        4595.467500                \n",
+      "4                                       13524.682963                \n",
+      "\n",
+      "   AverageTransactionAmountLast7Days_x_TransactionCountLast7Days  \\\n",
+      "0                                          2746.7026               \n",
+      "1                                           528.7900               \n",
+      "2                                          1252.2600               \n",
+      "3                                          2042.4300               \n",
+      "4                                          2311.1800               \n",
+      "\n",
+      "   AverageTransactionAmountLast30Days_x_TransactionCountLast30Days  \\\n",
+      "0                                          8016.7026                 \n",
+      "1                                          2441.0700                 \n",
+      "2                                          7148.4600                 \n",
+      "3                                          4089.4000                 \n",
+      "4                                         13247.4678                 \n",
+      "\n",
+      "   AverageTransactionAmountLast30Days_x_TransactionCountLast7Days  \\\n",
+      "0                                        2045.077194                \n",
+      "1                                         479.495893                \n",
+      "2                                        1243.210435                \n",
+      "3                                        1817.511111                \n",
+      "4                                        2263.807789                \n",
+      "\n",
+      "   TransactionCountLast30Days_x_TransactionCountLast7Days  \n",
+      "0                                             2450.0       \n",
+      "1                                              616.0       \n",
+      "2                                             3312.0       \n",
+      "3                                             1764.0       \n",
+      "4                                             4266.0       \n",
+      "\n",
+      "[5 rows x 55 columns]\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/var/folders/xp/synrlbr15rx4pkqjmwqk80k80000gn/T/ipykernel_9824/1007028137.py:87: UserWarning: Boolean Series key will be reindexed to match DataFrame index.\n",
+      "  fraud = X_train[y_train == 1]\n",
+      "/var/folders/xp/synrlbr15rx4pkqjmwqk80k80000gn/T/ipykernel_9824/1007028137.py:88: UserWarning: Boolean Series key will be reindexed to match DataFrame index.\n",
+      "  non_fraud = X_train[y_train == 0]\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Accuracy on train data: 0.9998257232485186\n",
+      "Classification Report:               precision    recall  f1-score   support\n",
+      "\n",
+      "         0.0       1.00      1.00      1.00      2869\n",
+      "         1.0       1.00      1.00      1.00      2869\n",
+      "\n",
+      "    accuracy                           1.00      5738\n",
+      "   macro avg       1.00      1.00      1.00      5738\n",
+      "weighted avg       1.00      1.00      1.00      5738\n",
+      "\n",
+      "ROC AUC Score on train data: 0.9998257232485187\n",
+      "Precision-Recall AUC on train data: 0.9998257839721254\n"
+     ]
+    },
+    {
+     "data": {
+      "image/png": "iVBORw0KGgoAAAANSUhEUgAAA04AAAIhCAYAAAB5deq6AAAAOXRFWHRTb2Z0d2FyZQBNYXRwbG90bGliIHZlcnNpb24zLjkuMiwgaHR0cHM6Ly9tYXRwbG90bGliLm9yZy8hTgPZAAAACXBIWXMAAA9hAAAPYQGoP6dpAABkv0lEQVR4nO3dd3gUVf/+8XtJJ5BAKCFASEJv0kGBByItCAhY6EhH4UHlAayIgmCJWAALTQmgiIjSVKoBFGlKl6pSDUhvCZ2U8/uDX/bLkjKbkLBB3q/r2utKZs/MfHb27M7eO2dmbcYYIwAAAABAmnK5ugAAAAAAyOkITgAAAABggeAEAAAAABYITgAAAABggeAEAAAAABYITgAAAABggeAEAAAAABYITgAAAABggeAEAAAAABYITneB6dOny2az2W/u7u4KCgpSp06dtHfvXpfV9frrr8tms7ls/bf6+eefHbbTzbd27dq5urxUTZgwQdOnT8/WdSRvl59//tk+bfHixXr99ddTbW+z2fTMM89kal2HDh1y2O4eHh4qUKCAateurcGDB2vXrl3pzj9kyBDZbDY9/PDDabY5fPiwBgwYoLJly8rHx0cBAQG677779OSTT+rw4cP2dsn98/Tp0w7z79+/XyVLllRgYKC2bduW5npufd3ZbDYVKlRIDz74oBYuXOjcBknFgw8+qAcffDDT8+ckNpstzX50qz179qhVq1YKCAhQvnz5VLduXX377bcZWt+ZM2c0dOhQVaxYUb6+vvL391f58uXVrVs3bd++3d7u5ufu5n6fzBij0qVLy2azpfpc3Lye3Llzy8/PTw888IDGjx+v+Ph4e7uePXum+Z5z861nz56Sbjz3abUJDQ3N0LawcmttXl5eKleunEaMGKGrV69m6bqcERoaat8Ozkp+Hg8dOpQtNVkJDQ112Ia+vr6qUaOGPvnkExljXFLTzVLbPj179sxQX/rhhx/UunVrBQYGytPTUwEBAWrSpIlmzpzp0NfvJitWrFCtWrXk6+srm82mBQsWZMt60ns933xz9j0yLantw29XfHy8Jk+erNq1aysgIEC5c+dWSEiI2rZtq/nz52dqmW+//Xa2beucxN3VBcB506ZNU/ny5XX16lWtXbtWb731ln766Sf98ccfyp8/v6vLyzHefvttNWrUyGFagQIFXFRN+iZMmKCCBQtm+ANFRtSoUUPr169XxYoV7dMWL16s8ePH3/YbelqeffZZdenSRUlJSTp//ry2bt2qqVOn6uOPP1ZkZKReeOGFFPPEx8fryy+/lCQtXbpU//zzj4oVK+bQ5siRI6pRo4by5cun5557TuXKlVNsbKx2796tb775RgcOHFBwcHCade3YsUPNmzeXh4eH1qxZozJlylg+luTXnTFGx48f1yeffKLWrVvr+++/V+vWrTO4Ze5NcXFxatasmfLmzatPP/1UuXPn1i+//KL169erffv2Ti3j4sWLeuCBB3Tx4kW98MILqlq1qq5cuaK//vpL8+bN07Zt21SlShWHefLmzauoqKgU4WjVqlXav3+/8ubNm2I9f/zxhyIiInTx4kU999xzqlevnq5cuaKFCxfqf//7n7799lstXrxYuXPn1muvvab+/fvb592yZYuefvrpFO9BhQoVsv9dsmRJzZw5M8V6vby8nNoOGeHj46OVK1dKks6dO6dZs2Zp1KhR+uOPPzR79uwsX1965s+fLz8/vwzN06pVK61fv15BQUHZVJW1+vXr6/3335ckHT16VGPGjNGzzz6ruLg4vfLKKy6r63YZY9S7d29Nnz5dLVu21JgxYxQcHKzY2Fj99NNPGjBggE6fPq3//e9/ri41Q4wx6tChg8qWLavvv/9evr6+KleuXLasa8KECYqLi7P/v2jRIr355pv2fUay4sWL39Z6UtuH365u3bpp3rx5GjRokEaOHCkvLy8dOHBAS5cu1bJly/Too49meJlvv/222rVrp0ceeSTL6syRDHK8adOmGUlm48aNDtNHjhxpJJmpU6e6pK4RI0aYnNSFfvrpJyPJfPvtt9my/MuXL5ukpKQsXWalSpVMeHh4li7TGU8//XSaz50k8/TTT2dquQcPHjSSzHvvvZfivsuXL5uHHnrISDKLFy9Ocf+3335rJJlWrVoZSeatt95K0Wb48OFGkjlw4ECq609MTLT/ndw/T506ZYwxZv369SZ//vymfPny5vDhw5aPJa3X3eXLl42Xl5fp3Lmz5TJSEx4e7pLnPDtIMiNGjLBst3jxYiPJLFmyJNPrmjp1qpFkVq5cmer9Nz/3yc9d3759jY+Pj4mNjXVo+8QTT5i6deumeP0lJCSYihUrGn9/f/Pnn3+mWMfXX39tJJl+/fqlWoPVe1B4eLipVKmS1UPNEj169DC+vr4ppjdo0MBIMkeOHElz3suXL2dnaXeNkJAQ06pVK4dpsbGxxt/f35QoUcJFVf2f5H5+8OBB+7QePXqYkJAQy3lHjx5tJJmRI0emev+xY8fM6tWrs6TOS5cuZclynHHkyBEjyYwePTrLlunsvj+tfcat7uT2SM2BAweMJDN8+PBU77/5vTQjfH19TY8ePW6jsrsDQ/XuYrVq1ZIknThxwj7t6tWreu6551StWjX5+/srICBAdevW1XfffZdi/uQhWTNmzFCFChWUO3duVa1aNdVhSIsWLVK1atXk5eWlsLAw+zdwt7p69aqGDh2qsLAweXp6qlixYnr66ad1/vx5h3ahoaF6+OGHtXDhQlWvXl0+Pj6qUKGCfd3Tp09XhQoV5Ovrqzp16mjTpk2Z3UwprFmzRk2aNFHevHmVO3du1atXT4sWLXJokzwE4scff1Tv3r1VqFAh5c6dW9euXZMkzZ49W3Xr1pWvr6/y5Mmj5s2ba+vWrQ7LOHDggDp16qSiRYvKy8tLgYGBatKkiX14WGhoqHbt2qVVq1Y5NVynffv2qlSpksO01q1by2azOQx52rJli2w2m3744QdJKQ/z9+zZU+PHj5ckh+EEtw6HcaZfZISPj4+ioqLk4eGh9957L8X9UVFR8vT01LRp0xQcHKxp06alGA5z5swZ5cqVS4ULF051Hblypf6WFh0draZNm6pUqVJavXr1bX0D6O3tLU9PT3l4eDhMHzlypO6//34FBATIz89PNWrUUFRUlFNDepydN/l1s3TpUtWoUUM+Pj4qX768pk6dmmKZ//zzj5566ikFBwfL09NTRYsWVbt27RzeL+Li4vT88887vF4HDRqkS5cuOSwrLi5OTz75pAoUKKA8efLooYce0l9//eX0NnNzc5Mk/fnnn07Pc6szZ85IUppHH1J77jt37ixJmjVrln1abGys5s6dq969e6doP3/+fO3evVsvv/yyypYtm+L+jh07KiIiQlFRUTp+/HimHoerPfDAA5Kkv//+W9L/9al58+apevXq8vb21siRIyVJx48fV79+/VS8eHF5enoqLCxMI0eOVEJCgsMyr127plGjRqlChQry9vZWgQIF1KhRI61bt87e5taheklJSXrzzTdVrlw5+fj4KF++fKpSpYo+/PBDe5u0hupNnTpVVatWlbe3twICAvToo49qz549Dm169uypPHnyaN++fWrZsqXy5Mmj4OBgPffcc/b38czw8/NT2bJlHV5HknT9+nW9+eabKl++vLy8vFSoUCH16tVLp06dSrGMr776SnXr1lWePHmUJ08eVatWTVFRUfb7o6Oj1bZtWxUvXlze3t4qXbq0+vXrl2LYcWbFx8dr9OjRKl++vF577bVU2xQpUkT/+c9/JKU9VCx5aPbNw82Tt/uOHTsUERGhvHnzqkmTJho0aJB8fX0djtAk69ixowIDAx2GBjqzj73V66+/bn9vf+mll1LsU7Ni359RyUPGt2zZonbt2il//vwqVaqUJGnTpk3q1KmTQkND5ePjo9DQUHXu3Nn+2kyW2va/nf6d0fdSZ/YTNptNly5d0ueff27/TPFvGZJ+K4LTXezgwYOS5LCDv3btms6ePavnn39eCxYs0KxZs/Sf//xHjz32mL744osUy1i0aJE++eQTjRo1SnPnzrXvhA4cOGBvs2LFCrVt21Z58+bV119/rffee0/ffPONpk2b5rAsY4weeeQRvf/+++rWrZsWLVqkIUOG6PPPP1fjxo1TvJh///13DR06VC+99JLmzZsnf39/PfbYYxoxYoSmTJmit99+WzNnzlRsbKwefvhhXblyxantkpSUpISEBIdbslWrVqlx48aKjY1VVFSUZs2apbx586p169apDl3p3bu3PDw8NGPGDM2ZM0ceHh56++231blzZ1WsWFHffPONZsyYoQsXLqhBgwbavXu3fd6WLVtq8+bNevfddxUdHa2JEyeqevXq9hA5f/58lSxZUtWrV9f69eu1fv36dMcWN23aVLt379axY8ckSQkJCVq1apV8fHwUHR1tb7d8+XK5u7un+ab12muv2c/5Sl7vrcNhnOkXmVG0aFHVrFlT69atc3hejhw5oh9//FFt27ZVoUKF1KNHD+3bt0+//PKLw/x169ZVUlKSHnvsMS1btizVnfCt5s6dq4cffli1a9fWypUrVbBgwQzVnJiYqISEBMXHx+vIkSP2HUaXLl0c2h06dEj9+vXTN998o3nz5umxxx7Ts88+qzfeeMNyHRmZ9/fff9dzzz2nwYMH67vvvlOVKlXUp08fh231zz//qHbt2po/f76GDBmiJUuWaNy4cfL399e5c+ckSZcvX1Z4eLg+//xzDRw4UEuWLNFLL72k6dOnq02bNvbQlvy6njFjhp577jnNnz9fDzzwgFq0aOH0NnzwwQdVtmxZDRs2TL/++qvT892sbt26kqTu3btrwYIF9p1/evz8/NSuXTuHYDlr1izlypVLHTt2TNE++XWU3lCTRx55RAkJCbd1vsGt708JCQlKSkrK9PIyYt++fZIchw9u2bJFL7zwggYOHKilS5fq8ccf1/Hjx1WnTh0tW7ZMw4cP15IlS9SnTx9FRkbqySefdHgsLVq00BtvvKGHH35Y8+fP1/Tp01WvXj3FxMSkWce7776r119/XZ07d9aiRYs0e/Zs9enTJ8WXbLeKjIxUnz59VKlSJc2bN08ffvihtm/frrp166Y45zc+Pl5t2rRRkyZN9N1336l3794aO3asRo8enYkt93+P9/Dhww773aSkJLVt21bvvPOOunTpokWLFumdd95RdHS0HnzwQYd91/Dhw9W1a1cVLVpU06dP1/z589WjRw+HD8v79+9X3bp1NXHiRP34448aPny4fvvtN/3nP//JkvOONm3apLNnz6pt27bZcp7y9evX1aZNGzVu3FjfffedRo4cqd69e+vy5cv65ptvHNqeP39e3333nZ544gn7l1HO7mNv1bdvX82bN0/SjeHiN+9Ts2Lffzsee+wxlS5dWt9++60mTZok6cb7frly5TRu3DgtW7ZMo0eP1rFjx1S7dm2nQnJm+3eFChWUL18+jRw5Up9++mm65xA6u59Yv369fHx81LJlS/tnigkTJji/ge4mLjzaBSclH/799ddfTXx8vLlw4YJZunSpKVKkiGnYsKGJj49Pc96EhAQTHx9v+vTpY6pXr+5wnyQTGBho4uLi7NOOHz9ucuXKZSIjI+3T7r//flO0aFFz5coV+7S4uDgTEBDgMNxr6dKlRpJ59913HdYze/ZsI8l8+umn9mkhISHGx8fHYbjItm3bjCQTFBTkcCh7wYIFRpL5/vvv091OycNkUrvt3bvXGGPMAw88YAoXLmwuXLjgsI0qV65sihcvbj8cn7zNu3fv7rCOmJgY4+7ubp599lmH6RcuXDBFihQxHTp0MMYYc/r0aSPJjBs3Lt2aMzJUb9++fUaS+eKLL4wxxqxZs8ZIMi+++KIJCwuzt2vWrJmpV69eiu3y008/2adZDdVzpl+kJr2hesk6duxoJJkTJ07Yp40aNcpIMkuXLjXG3BhKYLPZTLdu3RzmTUpKMv369TO5cuUykozNZjMVKlQwgwcPdhiuYsz/DdWTZEqWLOnQf52R3AduvXl5eZkJEyakO29iYqKJj483o0aNMgUKFHAY5mE1VC+9eUNCQoy3t7f5+++/7dOuXLliAgICHIaP9e7d23h4eJjdu3enuZ7IyEiTK1euFMNK5syZ4zCccsmSJUaS+fDDDx3avfXWW04P1Vu/fr0pXry4KV26tPH39zcbNmywnCc1o0aNMp6envbnIiwszPTv39/8/vvvDu1uHjKT3P937txpjDGmdu3apmfPnsaYlK+/5KGkV69eTbOG5O2R2lAgZ4bqpfUe1adPn4xujnQlD9WLj4838fHx5tSpU+bDDz80NpvN1K5d294uJCTEuLm5pRia2K9fP5MnTx6HvmaMMe+//76RZHbt2mWMMeaLL74wksxnn32Wbj0hISEOw3gefvhhU61atXTnuXUo2rlz54yPj49p2bKlQ7uYmBjj5eVlunTp4vD4JZlvvvnGoW3Lli1NuXLl0l3vzTW3bNnSvg3//vtv8+STTxoPDw+zcOFCe7tZs2YZSWbu3LkO82/cuNFIsr9fHDhwwLi5uZmuXbs6tX5jbrznJa9bkvnuu+/s92V2qF7ykNNJkyY5VUNq+xBj/u/9ftq0aQ7rVxqnENSoUcNh32SMMRMmTDCSzI4dO4wxzu9j05LWPuh29/3OSG2oXvJ+KK1hcTdLSEgwFy9eNL6+vg7vt6lt/9vt34sWLTIFCxa0v/8UKFDAtG/fPsXnLGf3E8YwVA850AMPPCAPDw/lzZtXDz30kPLnz6/vvvtO7u6O1/j49ttvVb9+feXJk0fu7u7y8PBQVFRUiqEMktSoUSOHE6QDAwNVuHBh+7dfly5d0saNG/XYY4/J29vb3i75m5qbJZ+EfOuFDtq3by9fX1+tWLHCYXq1atUcTv6vUKGCpBvfTufOnTvF9FsPX6dl9OjR2rhxo8MtODhYly5d0m+//aZ27dopT5489vZubm7q1q2bjhw5kmIo0eOPP+7w/7Jly5SQkKDu3bs7fFvs7e2t8PBw+7fQAQEBKlWqlN577z2NGTNGW7duve1vlEuVKqXQ0FAtX75c0o1vx++77z498cQTOnjwoPbv369r165pzZo1atq06W2ty6pf3A5zy/AzY4x9eF6zZs0kSWFhYXrwwQc1d+5ch6NKNptNkyZN0oEDBzRhwgT16tVL8fHxGjt2rCpVqqRVq1alWF+bNm104MCBTF8I44svvrD3oyVLlqhHjx56+umn9cknnzi0W7lypZo2bSp/f3+5ubnJw8NDw4cP15kzZ3Ty5Ml015GReatVq6YSJUrY//f29lbZsmUdnpslS5aoUaNG9tdOahYuXKjKlSurWrVqDn25efPmDsNCfvrpJ0lS165dHea/9YhbWvbv36+HHnpIgwcP1saNG1W2bFlFRERo8+bN9jZvvvmmPD09LYeYvPbaa4qJidHUqVPVr18/5cmTR5MmTVLNmjUdhuPdLDw8XKVKldLUqVO1Y8cObdy4MdVhes5K7r+Z/aa+VKlSKd6fNm7cmOaQqWTJRz4zcoTq0qVL8vDwkIeHhwoVKqRBgwapRYsWKY5sV6lSJcXQxIULF6pRo0YqWrSow3qTjzQmv9aWLFkib2/vDG/TOnXq6Pfff9eAAQOcPnq8fv16XblyJcU+Jjg4WI0bN06xj7HZbCn2U1WqVHF4rVht18WLF9u3YUhIiD777DN9/PHHatWqlb3NwoULlS9fPrVu3dphWdWqVVORIkXsr6Xo6GglJibq6aefTvdxnjx5Uv3791dwcLB9Hx4SEiJJqe7Hc6Jb952S1KtXL61bt85hPztt2jTVrl1blStXluT8PjYjsmLff7tSW97Fixf10ksvqXTp0nJ3d5e7u7vy5MmjS5cuOfU8O9O/09KyZUvFxMRo/vz5ev7551WpUiUtWLBAbdq0cbiqrrP7iXsJwekukvwBbuXKlerXr5/27NljH8OfbN68eerQoYOKFSumL7/8UuvXr7d/UEjtErSpXW3Oy8vLPrTg3LlzSkpKUpEiRVK0u3XamTNn5O7u7jAERLrx4i5SpEiKoTUBAQEO/3t6eqY73dlL6JYsWVK1atVyuHl5eencuXMyxqQ6rrdo0aL2x3CzW9smj2uvXbu2fWeafJs9e7b98LrNZtOKFSvUvHlzvfvuu6pRo4YKFSqkgQMH6sKFC049jtQ0adLE/uFg+fLlatasme677z4FBgZq+fLlWrt2ra5cuXLbwcmqX9yOv//+W15eXvbneeXKlTp48KDat2+vuLg4nT9/XufPn1eHDh10+fLlVD8Qh4SE6L///a+ioqK0d+9ezZ49W1evXk31an2fffaZevbsqdGjR+vFF1/McL0VKlSw96OHHnpIkydPVkREhF588UX7sKINGzYoIiLCvr61a9dq48aNGjZsmCSlu90yOq8zz82pU6csz+M6ceKEtm/fnqIf582bV8YYe19Ofl3fut7U3hNSM2bMGNlsNg0cOFD58uVTdHS0ypYtq2bNmtnPWfj555/VtGlTp64sFxgYqF69emnSpEnavn27Vq1aJU9PzzSv/mWz2dSrVy99+eWXmjRpksqWLasGDRqk2jY5kCYPg05N8rCW9K7emB5vb+8U70+1atWyfzBOS5MmTRyeJ2eCio+Pjz2Ybd++XefPn9eiRYtSXK0ytffEEydO6IcffkjRP5LPs0zuH6dOnVLRokXTPL8wLUOHDtX777+vX3/9VS1atFCBAgXUpEmTdM9nTe/cjKJFi6Z4/86dO7fDF37SjdfKzfsSq+36n//8Rxs3btSvv/6qGTNmKDQ0VM8884zWrFljb3PixAmdP3/efu7jzbfjx487bCsp/ausJSUlKSIiQvPmzdOLL76oFStWaMOGDfYhrlnxHuxMP78dyZfwv1XXrl3l5eVlPydq9+7d2rhxo3r16mVv4+w+NiOyYt9/u1JbXpcuXfTJJ5+ob9++WrZsmTZs2KCNGzeqUKFCTj3PzvTv9Pj4+OiRRx7Re++9p1WrVmnfvn2qWLGixo8fb//pEGf3E/cSLkd+F0n+ACfdOCKQmJioKVOmaM6cOfZzVr788kuFhYVp9uzZDt+IZvbExvz588tms6V6IvSt0woUKKCEhASdOnXKITyZ/38Z59q1a2eqhqySP39+5cqVy36O0M2OHj0qSSnOf7n1W+Xk++fMmWP5QSckJMR+wu9ff/2lb775Rq+//rquX79uH+OcUU2aNFFUVJQ2bNig3377Ta+++qokqXHjxoqOjtbff/+tPHny2E8Az2n++ecfbd68WeHh4fYjpcnbaMyYMRozZkyKeaKiotSvX790l9uhQwdFRkZq586dKe7LlSuXoqKiZLPZ9N577ykpKSnNi5s4q0qVKlq2bJn++usv1alTR19//bU8PDy0cOFChx2ZM79pcTvzpqVQoUI6cuRIum0KFiwoHx+fVC8skXy/9H+v6zNnzjiEJ2cvjrB//37lzp3b/nz7+/srOjpazZs3V9OmTTV8+HCtXLlSq1evdmp5t2rYsKEiIiK0YMECnTx5MtULh/Ts2VPDhw/XpEmT9NZbb6W5rGbNmunTTz/VggUL9PLLL6faZsGCBemeQ5hdJk+e7PClizPn6uXKlcu+z0hPakfPChYsqCpVqqS5vZI/cBYqVEhr1qxRUlJShsKTu7u7hgwZoiFDhuj8+fNavny5XnnlFTVv3lyHDx92GHWQLLn/pfUentHzFyXr7erv72/fhvfff7/uv/9+Va1aVQMGDNC2bduUK1cuFSxYUAUKFNDSpUtTXUfy0fvk/eKRI0fSDN47d+7U77//runTp6tHjx726cnnpmWFWrVqKSAgQN99950iIyMtj54mvy/d+jkirQ/NaS0vf/78atu2rb744gv7Zbu9vb0dvgDOyD7WWVmx779dty4vNjZWCxcu1IgRIxzea5LPU3eFEiVK6KmnntKgQYO0a9cuVapUyen9xL2EI053sXfffVf58+fX8OHD7cMLbDabPD09HV6kx48fT/Wqes5IvqrdvHnzHL7FuHDhgv2qbcmaNGkiSfbf4kk2d+5cXbp0yX6/q/j6+ur+++/XvHnzHL7NSUpK0pdffqnixYuneiWtmzVv3lzu7u7av39/qt8ap/UhpWzZsnr11Vd13333acuWLfbpGT2K06RJE9lsNr322mvKlSuXGjZsKOnGhSN++uknRUdHq2HDhpYnsiZ/s58V314668qVK+rbt68SEhLsR37OnTun+fPnq379+vrpp59S3Lp27aqNGzfaA1FqOz7pxpCHw4cP2z/M3So5PPXt21cffPCBhgwZcluPJfnKiMkfhJJ/mDr56nHJj3fGjBmWy7qdedPSokUL/fTTT+lexe7hhx/W/v37VaBAgVT7cfLVqJJ/j+jW3x766quvnKqlcuXKOnr0qMMwKj8/Py1btkxhYWEaNGiQunfvrvr166e7nBMnTqQ6PC0xMVF79+5V7ty5lS9fvlTnLVasmF544QW1bt3a4cPorR599FFVrFhR77zzTqpXDZw9e7Z+/PFH9e3b1+kjblmlXLlyqT4/2eXhhx/Wzp07VapUqVT7R/JrrUWLFrp69ept/ZB3vnz51K5dOz399NM6e/Zsmier161bVz4+Pin2MUeOHNHKlSsztY/J6HYtU6aMXnzxRe3YscN+UYGHH35YZ86cUWJiYqrbKvl3hCIiIuTm5qaJEyemufzkffetR18nT56c4ceWFg8PD7300kv6448/0rx4zcmTJ7V27VpJsm+Tm39kWpK+//77DK+7V69eOnr0qBYvXqwvv/xSjz76qMPrNrP72PRkxb4/q9lsNhljUjzPU6ZMUWJiYrau+8KFC7p48WKq9yUPEUx+fTu7n5CyblRKTscRp7tY/vz5NXToUL344ov66quv9MQTT9gvKztgwAC1a9dOhw8f1htvvKGgoKAUVxxy1htvvKGHHnpIzZo103PPPafExESNHj1avr6+Dt+MNGvWTM2bN9dLL72kuLg41a9fX9u3b9eIESNUvXp1devWLaseeqZFRkaqWbNmatSokZ5//nl5enpqwoQJ2rlzp2bNmmX5LVNoaKhGjRqlYcOG6cCBA/ZzzU6cOKENGzbI19dXI0eO1Pbt2/XMM8+offv2KlOmjDw9PbVy5Upt377d4dul++67T19//bVmz56tkiVLytvbW/fdd1+a6y9cuLAqV66sH3/8UY0aNbJ/K9u0aVOdPXtWZ8+eTfWoza2S1zF69Gi1aNFCbm5uqlKlin1Y5O2KiYnRr7/+qqSkJMXGxtp/APfvv//WBx98YB+aNnPmTF29elUDBw5M9Rv8AgUKaObMmYqKitLYsWP11ltvae3aterYsaOqVasmHx8fHTx4UJ988onOnDmT6mXOk9lsNn366aey2WwaO3asjDEaO3as5WPZuXOn/QqAZ86c0bx58xQdHa1HH31UYWFhkm78UOeYMWPUpUsXPfXUUzpz5ozef/99p4ae3c68aRk1apSWLFmihg0b6pVXXtF9992n8+fPa+nSpRoyZIjKly+vQYMGae7cuWrYsKEGDx6sKlWqKCkpSTExMfrxxx/13HPP6f7771dERIQaNmyoF198UZcuXVKtWrW0du1ap4Pdiy++qDlz5uiRRx7R4MGD1aBBA128eFE//fSTdu7cqeDgYH377bfq3bu3/YuA1MyYMUOTJ09Wly5dVLt2bfn7++vIkSOaMmWKdu3apeHDh6fbf9955x3LWt3c3DR37lw1a9ZMdevW1XPPPae6devq2rVr+uGHH/Tpp58qPDxcH3zwgVOPPTVXrlxJ88qCOelI8ahRoxQdHa169epp4MCBKleunK5evapDhw5p8eLFmjRpkooXL67OnTtr2rRp6t+/v/788081atRISUlJ+u2331ShQgV16tQp1eW3bt1alStXVq1atVSoUCH9/fffGjdunEJCQtL8Yep8+fLptdde0yuvvKLu3burc+fOOnPmjEaOHClvb2+NGDEiOzeJ3fPPP69JkyZp5MiR6tChgzp16qSZM2eqZcuW+t///qc6derIw8NDR44c0U8//aS2bdvq0UcfVWhoqF555RW98cYbunLlijp37ix/f3/t3r1bp0+f1siRI1W+fHmVKlVKL7/8sowxCggI0A8//OBw5dSs8MILL2jPnj0aMWKENmzYoC5duth/APeXX37Rp59+qpEjR6p+/foqUqSImjZtqsjISOXPn18hISFasWKF/Qp2GREREaHixYtrwIABOn78uMMwPcn5fWxG3e6+P6v5+fmpYcOGeu+991SwYEGFhoZq1apVioqKSvMLoKzy559/qnnz5urUqZPCw8MVFBSkc+fOadGiRfr000/14IMPql69epLk9H5CuvG54ueff9YPP/ygoKAg5c2bN9t+fNilXHRRCmRAej+qduXKFVOiRAlTpkwZk5CQYIwx5p133jGhoaHGy8vLVKhQwXz22Wep/lit0vih01uvfmSMMd9//72pUqWK8fT0NCVKlDDvvPNOqsu8cuWKeemll0xISIjx8PAwQUFB5r///a85d+5cinXc+sOCadXkzJXajHH+B3BXr15tGjdubHx9fY2Pj4954IEHzA8//ODQxuqH7BYsWGAaNWpk/Pz8jJeXlwkJCTHt2rUzy5cvN8YYc+LECdOzZ09Tvnx54+vra/LkyWOqVKlixo4da3+ejDHm0KFDJiIiwuTNm9dIcuqHCwcPHpzqD8SWKVPGSDLbt29PdbvcfEWea9eumb59+5pChQoZm83mcGWmjPSLWyU/V8k3Nzc3kz9/flOzZk0zaNAg+5W4klWrVs0ULlzYXLt2Lc1lPvDAA6ZgwYLm2rVr5tdffzVPP/20qVq1qgkICDBubm6mUKFC5qGHHkrxo7q3/gBusqSkJNO/f38jyQwcODDN9aZ2VT1/f39TrVo1M2bMmBRXXps6daopV66c8fLyMiVLljSRkZEmKioqxVWvUruqnrPzpvW6SW2Zhw8fNr179zZFihQxHh4epmjRoqZDhw4OVzO8ePGiefXVV025cuWMp6en8ff3N/fdd58ZPHiwOX78uL3d+fPnTe/evU2+fPlM7ty5TbNmzcwff/zh9FX1Tp48aZ599lkTEhJi3N3dTUBAgGnZsqVZsmSJuXTpkrn//vtNnjx5zNq1a9Ncxu7du81z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cAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALBAcAIAAAAACwQnAAAAALDg7uoCciJjjBISEpSYmOjqUgBkEzc3N7m7u8tms7m6FAAAcBcgON3i+vXrOnbsmC5fvuzqUgBks9y5cysoKEienp6uLgUAAORwBKebJCUl6eDBg3Jzc1PRokXl6enJt9HAv5AxRtevX9epU6d08OBBlSlTRrlyMXIZAACkjeB0k+vXryspKUnBwcHKnTu3q8sBkI18fHzk4eGhv//+W9evX5e3t7erSwIAADkYX7Gmgm+egXsDr3UAAOAsPjUAAAAAgAWCEwAAAABYIDjhtoSGhmrcuHFZ3vbfwGazacGCBZKkQ4cOyWazadu2bS6tKbs0bNhQX331Vbau4+bt6YyFCxeqevXqSkpKyr6iAADAPcPlwWnChAkKCwuTt7e3atasqdWrV6fZ9ueff5bNZktx++OPP+5gxTlTz5497dvDw8NDJUuW1PPPP69Lly5l63o3btyop556Ksvb3o4HH3zQvi08PT1VqlQpDR06VNeuXcv2dd+uffv2qVevXipevLi8vLwUFhamzp07a9OmTa4uLU0LFy7U8ePH1alTpzRfozffpk+fnqn1HDt2TC1atHC6/cMPPyybzZbtgQ4AANwbXHpVvdmzZ2vQoEGaMGGC6tev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vr6+6tGjhy5evKjw8HAVK1ZM33//vYoUKaItW7YoKSlJknTx4kW1bNlSb775pry9vfX555+rdevW+vPPP1WiRAlXPlQAgIsRnAAAd5WFCxcqT548SkxM1NWrVyVJY8aMkSS98cYb+uCDD/TYY49JksLCwrR7925NnjxZPXr00FdffaVTp05p48aNCggIkCSVLl3avuyqVauqatWq9v/ffPNNzZ8/X99//72eeeaZO/UQAQA5EMEJAHBXadSokSZOnKjLly9rypQp+uuvv/Tss8/q1KlTOnz4sPr06aMnn3zS3j4hIUH+/v6SpG3btql69er20HSrS5cuaeTIkVq4cKGOHj2qhIQEXblyRTExMXfksQEAci6CEwDgruLr62s/SvTRRx+pUaNGGjlypP2I0Geffab777/fYR43NzdJko+PT7rLfuGFF7Rs2TK9//77Kl26tHx8fNSuXTtdv349Gx4JAOBuQnACANzVRowYoRYtWui///2vihUrpgMHDqhr166ptq1SpYqmTJmis2fPpnrUafXq1erZs6ceffRRSTfOeTp06FB2lg8AuEtwVT0AwF3twQcfVKVKlfT222/r9ddfV2RkpD788EP99ddf2rFjh6ZNm2Y/B6pz584qUqSIHnnkEa1du1YHDhzQ3LlztX79ekk3zneaN2+etm3bpt9//11dunSxXzgCAHBvIzgBAO56Q4YM0WeffabmzZtrypQpmj59uu677z6Fh4dr+vTpCgsLkyR5enrqxx9/VOHChdWyZUvdd999euedd+xD+caOHav8+fOrXr16at26tZo3b64aNWq48qEBAHIImzHGuLoIAAAAAMjJOOIEAAAAABYITgAAAABggeAEAAAAABYITgAAAABggeAEAAAAABYITgAAAABggeAEAAAAABYITgAAAABggeAEAAAAABYITgAAAABggeAEAAAAABb+H7WItXrHXe7sAAAAAElFTkSuQmCC",
+      "text/plain": [
+       "<Figure size 1000x600 with 1 Axes>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from itertools import combinations\n",
+    "import pandas as pd\n",
+    "from sklearn.utils import resample\n",
+    "from sklearn.ensemble import RandomForestClassifier\n",
+    "from sklearn.metrics import accuracy_score, classification_report, roc_auc_score, precision_recall_curve, auc\n",
+    "from imblearn.over_sampling import SMOTE\n",
+    "import matplotlib.pyplot as plt\n",
+    "from sklearn.experimental import enable_halving_search_cv  # Required for ParallelPostFit\n",
+    "\n",
+    "# Define optimized features at the top to make it accessible in both blocks\n",
+    "optimized_features = [\n",
+    "    'LogTransactionAmount', 'merch_lat', 'AverageTransactionAmountLast14Days',\n",
+    "    'TransactionAmount', 'distance', 'merch_long', \n",
+    "    'AverageTransactionAmountLast7Days', 'AverageTransactionAmountLast30Days',\n",
+    "    'TransactionCountLast30Days', 'TransactionCountLast7Days'\n",
+    "]\n",
+    "\n",
+    "def load_and_preprocess(df, selected_features, sample_fraction=1.0):\n",
+    "    # Sample and select features\n",
+    "    X_train = df[selected_features].sample(frac=sample_fraction)\n",
+    "    y_train = df['is_fraud']  # Assuming 'is_fraud' is the target column\n",
+    "    \n",
+    "    # Convert to Pandas if using Dask DataFrame\n",
+    "    if hasattr(X_train, \"compute\"):\n",
+    "        X_train = X_train.compute().reset_index(drop=True)\n",
+    "    else:\n",
+    "        X_train = X_train.reset_index(drop=True)\n",
+    "    \n",
+    "    # Reset index for y_train if needed\n",
+    "    y_train = y_train.reset_index(drop=True)\n",
+    "\n",
+    "    # Generate pairwise interactions only for features that exist in X_train\n",
+    "    existing_features = [feature for feature in selected_features if feature in X_train.columns]\n",
+    "    for feature1, feature2 in combinations(existing_features, 2):\n",
+    "        interaction_name = f\"{feature1}_x_{feature2}\"\n",
+    "        X_train[interaction_name] = X_train[feature1] * X_train[feature2]\n",
+    "\n",
+    "    print(X_train.head())  # Preview the final dataframe with interaction terms\n",
+    "    return X_train, y_train\n",
+    "\n",
+    "# Model training and evaluation\n",
+    "if use_test_data:\n",
+    "    # Load and preprocess test data\n",
+    "    X_test, y_test = load_and_preprocess(df, optimized_features)\n",
+    "    X_test = X_test.reset_index(drop=True)\n",
+    "\n",
+    "    # Evaluate on test data\n",
+    "    y_test_pred = model.predict(X_test)\n",
+    "    test_accuracy = accuracy_score(y_test, y_test_pred)\n",
+    "    print(\"Accuracy on test data:\", test_accuracy)\n",
+    "    \n",
+    "    # Classification report\n",
+    "    clf_report = classification_report(y_test, y_test_pred)\n",
+    "    print(\"Classification Report:\", clf_report)\n",
+    "\n",
+    "    # Calculate AUC-ROC\n",
+    "    roc_auc = roc_auc_score(y_test, y_test_pred)\n",
+    "    print(\"ROC AUC Score on test data:\", roc_auc)\n",
+    "\n",
+    "    # Calculate Precision-Recall curve\n",
+    "    precision, recall, thresholds = precision_recall_curve(y_test, y_test_pred)\n",
+    "    pr_auc = auc(recall, precision)\n",
+    "    print(\"Precision-Recall AUC on test data:\", pr_auc)\n",
+    "\n",
+    "    # Plot Precision-Recall curve\n",
+    "    plt.figure(figsize=(10, 6))\n",
+    "    plt.plot(recall, precision, marker='.', label='Precision-Recall Curve (Test)')\n",
+    "    plt.xlabel('Recall')\n",
+    "    plt.ylabel('Precision')\n",
+    "    roc_title = 'Random Forest with DASK Balanced & SMOTE - Precision-Recall Curve for Test Set'\n",
+    "    plt.title(roc_title)\n",
+    "    plt.legend()\n",
+    "    plt.show()\n",
+    "\n",
+    "else:\n",
+    "    # Training phase with sampling and SMOTE\n",
+    "    X_train, y_train = load_and_preprocess(df, optimized_features, sample_fraction=0.4)\n",
+    "    X_train = X_train.reset_index(drop=True)  # Convert X_train to Pandas if needed\n",
+    "    y_train = y_train.reset_index(drop=True)  # Reset y_train index for alignment\n",
+    "    \n",
+    "\n",
+    "    # Initialize model\n",
+    "    model = RandomForestClassifier(n_estimators=100, max_depth=20, random_state=42, class_weight='balanced')\n",
+    "\n",
+    "\n",
+    "    # Downsample and SMOTE Upsample\n",
+    "    fraud = X_train[y_train == 1]\n",
+    "    non_fraud = X_train[y_train == 0]\n",
+    "\n",
+    "    # Downsample non-fraud class to match fraud class size\n",
+    "    non_fraud_downsampled = resample(non_fraud, replace=False, n_samples=len(fraud), random_state=42)\n",
+    "\n",
+    "    # Concatenate downsampled non-fraud and fraud samples\n",
+    "    X_resampled = pd.concat([fraud, non_fraud_downsampled]).reset_index(drop=True)\n",
+    "    y_resampled = pd.concat([\n",
+    "        y_train.loc[fraud.index],\n",
+    "        y_train.loc[non_fraud_downsampled.index]\n",
+    "    ]).reset_index(drop=True)\n",
+    "\n",
+    "    # Verify that X_resampled and y_resampled have the same length\n",
+    "    assert len(X_resampled) == len(y_resampled), \"Lengths of X_resampled and y_resampled do not match.\"\n",
+    "\n",
+    "    # Apply SMOTE on the resampled data\n",
+    "    smote = SMOTE(random_state=42)\n",
+    "    X_smote, y_smote = smote.fit_resample(X_resampled, y_resampled)\n",
+    "\n",
+    "\n",
+    "    # Train model\n",
+    "    model.fit(X_smote, y_smote)\n",
+    "\n",
+    "    # Evaluate on train data\n",
+    "    y_train_pred = model.predict(X_smote)\n",
+    "    train_accuracy = accuracy_score(y_smote, y_train_pred)\n",
+    "    print(\"Accuracy on train data:\", train_accuracy)\n",
+    "    \n",
+    "    # Classification report\n",
+    "    clf_report = classification_report(y_smote, y_train_pred)\n",
+    "    print(\"Classification Report:\", clf_report)\n",
+    "\n",
+    "    # Calculate AUC-ROC\n",
+    "    roc_auc = roc_auc_score(y_smote, y_train_pred)\n",
+    "    print(\"ROC AUC Score on train data:\", roc_auc)\n",
+    "\n",
+    "    # Calculate Precision-Recall curve\n",
+    "    precision, recall, thresholds = precision_recall_curve(y_smote, y_train_pred)\n",
+    "    pr_auc = auc(recall, precision)\n",
+    "    print(\"Precision-Recall AUC on train data:\", pr_auc)\n",
+    "\n",
+    "    # Plot Precision-Recall curve\n",
+    "    plt.figure(figsize=(10, 6))\n",
+    "    plt.plot(recall, precision, marker='.', label='Precision-Recall Curve (Train)')\n",
+    "    plt.xlabel('Recall')\n",
+    "    plt.ylabel('Precision')\n",
+    "    roc_title = 'Random Forest with DASK Balanced & SMOTE - Precision-Recall Curve for Train Set'\n",
+    "    plt.title(roc_title)\n",
+    "    plt.legend()\n",
+    "    plt.show()\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b113ffb6",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "235744b2",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "timestamp = time.strftime(\"%Y%m%d_%H%M%S\")  # Format: YYYYMMDD_HHMMSS\n",
+    "\n",
+    "\n",
+    "# Define the report title and output filename\n",
+    "classification_report_title = f\"Random Forest with DASK Balanced & SMOTE Model Classification Report for {dataset_type.capitalize()} Set\"\n",
+    "classification_report_filename = f\"{dataset_type}_classification_report_{timestamp}.txt\"\n",
+    "\n",
+    "# Construct the full report including accuracy, ROC AUC, Precision-Recall AUC, and classification report\n",
+    "accuracy = test_accuracy if use_test_data else train_accuracy\n",
+    "full_report = (\n",
+    "    f\"Accuracy: {accuracy:.4f}\\n\"\n",
+    "    f\"ROC AUC Score: {roc_auc:.4f}\\n\"\n",
+    "    f\"Precision-Recall AUC: {pr_auc:.4f}\\n\\n\"\n",
+    "    f\"{clf_report}\"\n",
+    ")\n",
+    "\n",
+    "# Save the classification report with accuracy, ROC AUC, and Precision-Recall AUC to a text file\n",
+    "with open(os.path.join(reports_output_dir, classification_report_filename), 'w') as f:\n",
+    "    f.write(full_report)  # Writing the combined report string to the file\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 184,
+   "id": "91f4bc5c",
+   "metadata": {},
+   "outputs": [
+    {
+     "ename": "NameError",
+     "evalue": "name 'model' is not defined",
+     "output_type": "error",
+     "traceback": [
+      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
+      "\u001b[0;31mNameError\u001b[0m                                 Traceback (most recent call last)",
+      "Cell \u001b[0;32mIn[184], line 2\u001b[0m\n\u001b[1;32m      1\u001b[0m \u001b[38;5;66;03m# Feature Importance Analysis\u001b[39;00m\n\u001b[0;32m----> 2\u001b[0m importances \u001b[38;5;241m=\u001b[39m \u001b[43mmodel\u001b[49m\u001b[38;5;241m.\u001b[39mestimator\u001b[38;5;241m.\u001b[39mfeature_importances_\n\u001b[1;32m      3\u001b[0m features \u001b[38;5;241m=\u001b[39m X_train\u001b[38;5;241m.\u001b[39mcolumns\n\u001b[1;32m      4\u001b[0m feature_importances \u001b[38;5;241m=\u001b[39m pd\u001b[38;5;241m.\u001b[39mDataFrame({\u001b[38;5;124m'\u001b[39m\u001b[38;5;124mFeature\u001b[39m\u001b[38;5;124m'\u001b[39m: features, \u001b[38;5;124m'\u001b[39m\u001b[38;5;124mImportance\u001b[39m\u001b[38;5;124m'\u001b[39m: importances})\n",
+      "\u001b[0;31mNameError\u001b[0m: name 'model' is not defined"
+     ]
+    }
+   ],
+   "source": [
+    "# Feature Importance Analysis\n",
+    "importances = model.estimator.feature_importances_\n",
+    "features = X_train.columns\n",
+    "feature_importances = pd.DataFrame({'Feature': features, 'Importance': importances})\n",
+    "feature_importances = feature_importances.sort_values(by='Importance', ascending=False)\n",
+    "print(\"Top Features:\\n\", feature_importances.head(10))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "d83b384d",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "log_time(\"END - Random Forest with DASK Balanced & SMOTE Model .....  \", start_time)\n",
+    "start_time = time.time()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "875d9134",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "\n",
+    "# Close Dask client when done\n",
+    "client.close()\n",
+    "log_time(\"Closed the DASK CLient\", start_time)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "4713ea62",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import pickle\n",
+    "import os\n",
+    "\n",
+    "# Specify the output directory\n",
+    "output_dir_model = '/Users/sadhvichandragiri/desktop/coding/ZHAW_Project/ML_BigData_Repo_1/models'\n",
+    "if not os.path.exists(output_dir_model):\n",
+    "    os.makedirs(output_dir_model)  # Ensure the directory exists\n",
+    "\n",
+    "# Create a dynamic filename with .pkl extension\n",
+    "model_title = 'Random Forest with DASK Balanced & SMOTE Model '\n",
+    "outputfilename_model = f\"{dataset_type}_{model_title.replace(' ', '_').replace(',', '').lower()}.pkl\"\n",
+    "\n",
+    "# Save the best model obtained from GridSearchCV\n",
+    "with open(os.path.join(output_dir_model, outputfilename_model), 'wb') as model_file:\n",
+    "    pickle.dump(model, model_file)\n",
+    "\n",
+    "print(f\"Model saved to {os.path.join(output_dir_model, outputfilename_model)}\")\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "0d57811b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import time\n",
+    "\n",
+    "# Assuming start_time is defined earlier in the notebook\n",
+    "end_time_notebook = time.time()\n",
+    "elapsed_time = end_time_notebook - start_time_notebook\n",
+    "\n",
+    "# Print and format the notebook end time and total execution time\n",
+    "print(f\"Notebook ended at: {time.ctime(end_time_notebook)}\")\n",
+    "print(f\"Total execution time: {elapsed_time // 60:.0f} minutes and {elapsed_time % 60:.2f} seconds\")\n",
+    "\n",
+    "\n",
+    "log_time(\"Notebook (Random Forest with DASK Balanced & SMOTE Model) Ended at... \", start_time_notebook)\n"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "3d8d0f14",
+   "metadata": {},
+   "source": [
+    "Results reveal the following:\n",
+    "\n",
+    "    ROC AUC Score: 0.70, indicating moderate model performance in distinguishing between fraud and non-fraud cases. However, this score shows room for improvement, especially given the critical nature of detecting fraud.\n",
+    "\n",
+    "    Precision-Recall AUC: 0.70, which aligns with the ROC AUC score. This metric is helpful here as it focuses on the model's performance with regard to the minority class (fraud).\n",
+    "\n",
+    "    Precision at Various Thresholds: These values suggest high precision at some thresholds, but with a trade-off in recall (detecting fewer fraud cases).\n",
+    "        When precision is 1.0, recall drops to 0, meaning the model makes fewer false positive fraud predictions but at the cost of missing actual fraud cases.\n",
+    "\n",
+    "    Recall at Various Thresholds: The recall values indicate that the model captures only a fraction (about 40%) of actual fraud cases at one threshold, suggesting the need to optimize recall.\n",
+    "\n",
+    "Suggested Next Steps to Improve Performance:\n",
+    "\n",
+    "    Adjust Class Weights:\n",
+    "        Set class_weight='balanced' in the RandomForestClassifier to help the model pay more attention to fraud cases.\n",
+    "\n",
+    "    Hyperparameter Tuning:\n",
+    "        Experiment with more in-depth hyperparameter tuning, such as adjusting n_estimators, max_depth, and min_samples_split, which may improve the model's performance on fraud cases.\n",
+    "\n",
+    "    Try a Different Algorithm:\n",
+    "        Consider alternative algorithms that may handle class imbalance better, such as Gradient Boosting or XGBoost, which often yield better results in fraud detection.\n",
+    "\n",
+    "    Custom Threshold Selection:\n",
+    "        Use the Precision-Recall curve to determine an optimal classification threshold that balances precision and recall for fraud detection. This approach allows you to improve recall without compromising precision too much."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a5d40854",
+   "metadata": {},
+   "source": [
+    "# ran for initial traim"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python (ZHAW_Project)",
+   "language": "python",
+   "name": "zhaw_project"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.15"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}

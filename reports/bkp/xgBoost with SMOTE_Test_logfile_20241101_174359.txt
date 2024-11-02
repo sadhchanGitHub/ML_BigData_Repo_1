@@ -1,0 +1,6 @@
+xgBoost with SMOTE_Test Notebook  started at...  completed at Fri Nov  1 17:43:59 2024. Elapsed time: 0 minutes and 0.03 seconds
+Starting the DASK Client completed at Fri Nov  1 17:43:59 2024. Elapsed time: 0 minutes and 0.01 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Fri Nov  1 17:44:15 2024. Elapsed time: 0 minutes and 15.98 seconds
+--------------------------------------------------- ------------------   completed at Fri Nov  1 17:44:15 2024. Elapsed time: 0 minutes and 15.98 seconds
+START - Feature Engineering .....   completed at Fri Nov  1 17:44:15 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Fri Nov  1 17:44:17 2024. Elapsed time: 0 minutes and 1.41 seconds

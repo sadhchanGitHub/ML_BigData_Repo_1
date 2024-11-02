@@ -1,0 +1,25 @@
+Accuracy: 0.8021
+ROC AUC Score: 0.8021
+Precision-Recall AUC: 0.8537
+
+Top 10 Feature Importances:
+                                                       Feature  Importance
+                                                    merch_long    0.029112
+                 merch_lat_x_AverageTransactionAmountLast7Days    0.023487
+                 AverageTransactionAmountLast14Days_x_distance    0.023338
+                                        merch_lat_x_merch_long    0.023063
+AverageTransactionAmountLast14Days_x_TransactionCountLast7Days    0.023044
+               AverageTransactionAmountLast14Days_x_merch_long    0.022802
+                                                      distance    0.022337
+                merch_lat_x_AverageTransactionAmountLast30Days    0.022157
+                         distance_x_TransactionCountLast30Days    0.022022
+                          distance_x_TransactionCountLast7Days    0.021200
+
+              precision    recall  f1-score   support
+
+         0.0       0.78      0.83      0.81      7506
+         1.0       0.82      0.77      0.80      7506
+
+    accuracy                           0.80     15012
+   macro avg       0.80      0.80      0.80     15012
+weighted avg       0.80      0.80      0.80     15012

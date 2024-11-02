@@ -1,0 +1,2 @@
+Notebook (Random Forest with DASK Balanced & SMOTE Model ) started at...  completed at Fri Nov  1 09:57:24 2024. Elapsed time: 0 minutes and 0.04 seconds
+Starting the DASK CLient completed at Fri Nov  1 09:57:24 2024. Elapsed time: 0 minutes and 0.05 seconds

@@ -1,0 +1,16 @@
+Notebook started at...  completed at Wed Oct 30 13:27:14 2024. Elapsed time: 0 minutes and 5.37 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Wed Oct 30 13:27:15 2024. Elapsed time: 0 minutes and 6.88 seconds
+START - Feature Engineering .....   completed at Wed Oct 30 13:27:15 2024. Elapsed time: 0 minutes and 0.00 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Wed Oct 30 13:27:18 2024. Elapsed time: 0 minutes and 2.67 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Wed Oct 30 13:28:34 2024. Elapsed time: 1 minutes and 16.49 seconds
+Part3 - Merchant Categories & Age group completed at Wed Oct 30 13:28:35 2024. Elapsed time: 1 minutes and 17.74 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Wed Oct 30 13:30:58 2024. Elapsed time: 2 minutes and 22.64 seconds
+Part5 - RapidTransactionFlag completed at Wed Oct 30 13:31:08 2024. Elapsed time: 2 minutes and 32.22 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Wed Oct 30 13:31:19 2024. Elapsed time: 0 minutes and 11.24 seconds
+Part7 - NetworkX Start Step completed at Wed Oct 30 13:32:37 2024. Elapsed time: 1 minutes and 18.22 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Wed Oct 30 13:35:23 2024. Elapsed time: 2 minutes and 45.50 seconds
+Part9 - Community & Top Merchants completed at Wed Oct 30 13:36:17 2024. Elapsed time: 3 minutes and 39.89 seconds
+Part10 - Density completed at Wed Oct 30 13:36:17 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Wed Oct 30 13:36:19 2024. Elapsed time: 0 minutes and 2.35 seconds
+END - Feature Engineering .....   completed at Wed Oct 30 13:36:19 2024. Elapsed time: 0 minutes and 0.01 seconds
+START - Decision Tree Model .....   completed at Wed Oct 30 13:40:34 2024. Elapsed time: 4 minutes and 14.18 seconds

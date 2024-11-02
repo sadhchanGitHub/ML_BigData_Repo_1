@@ -1,0 +1,23 @@
+xgBoost with SMOTE sacle_pos_weight=5_Test Notebook  started at...  completed at Fri Nov  1 18:39:05 2024. Elapsed time: 0 minutes and 0.03 seconds
+Starting the DASK Client completed at Fri Nov  1 18:39:05 2024. Elapsed time: 0 minutes and 0.01 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Fri Nov  1 18:39:23 2024. Elapsed time: 0 minutes and 17.79 seconds
+--------------------------------------------------- ------------------   completed at Fri Nov  1 18:39:23 2024. Elapsed time: 0 minutes and 17.79 seconds
+START - Feature Engineering .....   completed at Fri Nov  1 18:39:23 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Fri Nov  1 18:39:24 2024. Elapsed time: 0 minutes and 1.13 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Fri Nov  1 18:40:04 2024. Elapsed time: 0 minutes and 39.93 seconds
+Part3 - Merchant Categories & Age group completed at Fri Nov  1 18:40:05 2024. Elapsed time: 0 minutes and 40.51 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Fri Nov  1 18:41:14 2024. Elapsed time: 1 minutes and 8.60 seconds
+Part5 - RapidTransactionFlag completed at Fri Nov  1 18:41:20 2024. Elapsed time: 1 minutes and 14.95 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Fri Nov  1 18:41:25 2024. Elapsed time: 0 minutes and 4.90 seconds
+Part7 - NetworkX Start Step completed at Fri Nov  1 18:42:06 2024. Elapsed time: 0 minutes and 41.03 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Fri Nov  1 18:44:10 2024. Elapsed time: 2 minutes and 3.70 seconds
+Part9 - Community & Top Merchants completed at Fri Nov  1 18:45:15 2024. Elapsed time: 3 minutes and 8.95 seconds
+Part10 - Density completed at Fri Nov  1 18:45:15 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Fri Nov  1 18:45:17 2024. Elapsed time: 0 minutes and 1.69 seconds
+END - Feature Engineering .....   completed at Fri Nov  1 18:45:17 2024. Elapsed time: 0 minutes and 0.01 seconds
+--------------------------------------------------- ------------------   completed at Fri Nov  1 18:45:17 2024. Elapsed time: 0 minutes and 0.00 seconds
+xgBoost with SMOTE sacle_pos_weight=5_Test START Model ....   completed at Fri Nov  1 18:45:17 2024. Elapsed time: 0 minutes and 0.01 seconds
+xgBoost with SMOTE sacle_pos_weight=5_Test END Model ....   completed at Fri Nov  1 18:45:20 2024. Elapsed time: 0 minutes and 3.93 seconds
+Closed the DASK Client completed at Fri Nov  1 18:45:21 2024. Elapsed time: 0 minutes and 0.40 seconds
+.................................................   completed at Fri Nov  1 18:45:21 2024. Elapsed time: 0 minutes and 0.40 seconds
+xgBoost with SMOTE sacle_pos_weight=5_Test Notebook Ended at...  completed at Fri Nov  1 18:45:21 2024. Elapsed time: 6 minutes and 15.46 seconds

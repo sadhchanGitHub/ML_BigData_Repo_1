@@ -1,0 +1,28 @@
+Notebook started at...  completed at Wed Oct 30 11:30:34 2024. Elapsed time: 0 minutes and 6.07 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Wed Oct 30 11:30:35 2024. Elapsed time: 0 minutes and 7.64 seconds
+START - Feature Engineering .....   completed at Wed Oct 30 11:30:35 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Wed Oct 30 11:30:38 2024. Elapsed time: 0 minutes and 2.74 seconds
+Distance Calculation with Multiprocessing (4 cores) completed at Wed Oct 30 11:31:48 2024. Elapsed time: 1 minutes and 9.77 seconds
+Part3 - Merchant Categories & Age group completed at Wed Oct 30 11:31:49 2024. Elapsed time: 1 minutes and 10.97 seconds
+TransactionFrequency Multiprocessing completed at Wed Oct 30 11:34:10 2024. Elapsed time: 2 minutes and 20.47 seconds
+Part4 - count_transactions_within_last_hour completed at Wed Oct 30 11:34:10 2024. Elapsed time: 2 minutes and 20.56 seconds
+Part5 - RapidTransactionFlag completed at Wed Oct 30 11:34:19 2024. Elapsed time: 0 minutes and 9.48 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Wed Oct 30 11:34:31 2024. Elapsed time: 0 minutes and 11.27 seconds
+Part7 - NetworkX Start Step completed at Wed Oct 30 11:35:47 2024. Elapsed time: 1 minutes and 16.46 seconds
+Notebook started at...  completed at Wed Oct 30 11:41:45 2024. Elapsed time: 0 minutes and 5.57 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Wed Oct 30 11:41:46 2024. Elapsed time: 0 minutes and 7.17 seconds
+START - Feature Engineering .....   completed at Wed Oct 30 11:41:46 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Wed Oct 30 11:41:49 2024. Elapsed time: 0 minutes and 2.67 seconds
+Distance Calculation with Multiprocessing (4 cores) completed at Wed Oct 30 11:42:59 2024. Elapsed time: 1 minutes and 9.47 seconds
+Part3 - Merchant Categories & Age group completed at Wed Oct 30 11:43:00 2024. Elapsed time: 1 minutes and 10.74 seconds
+TransactionFrequency Multiprocessing completed at Wed Oct 30 11:45:20 2024. Elapsed time: 2 minutes and 19.74 seconds
+Part4 - count_transactions_within_last_hour completed at Wed Oct 30 11:45:20 2024. Elapsed time: 2 minutes and 19.82 seconds
+Part5 - RapidTransactionFlag completed at Wed Oct 30 11:45:29 2024. Elapsed time: 0 minutes and 9.57 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Wed Oct 30 11:45:41 2024. Elapsed time: 0 minutes and 11.40 seconds
+Part7 - NetworkX Start Step completed at Wed Oct 30 11:47:00 2024. Elapsed time: 1 minutes and 18.84 seconds
+Betweenness Centrality Calculation with Multiprocessing completed at Wed Oct 30 11:49:44 2024. Elapsed time: 2 minutes and 44.64 seconds
+Part9 - Community & Top Merchants completed at Wed Oct 30 11:50:40 2024. Elapsed time: 3 minutes and 40.20 seconds
+Part10 - Density completed at Wed Oct 30 11:50:40 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Wed Oct 30 11:50:42 2024. Elapsed time: 0 minutes and 2.28 seconds
+END - Feature Engineering .....   completed at Wed Oct 30 11:50:42 2024. Elapsed time: 0 minutes and 0.01 seconds
+Notebook Ended at...  completed at Wed Oct 30 11:50:42 2024. Elapsed time: 9 minutes and 2.82 seconds

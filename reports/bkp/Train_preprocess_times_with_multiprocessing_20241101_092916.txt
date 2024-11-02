@@ -1,0 +1,23 @@
+Notebook (Random Forest with DASK Balanced & SMOTE Model ) started at...  completed at Fri Nov  1 09:29:16 2024. Elapsed time: 0 minutes and 0.03 seconds
+Starting the DASK CLient completed at Fri Nov  1 09:29:16 2024. Elapsed time: 0 minutes and 0.04 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Fri Nov  1 09:29:39 2024. Elapsed time: 0 minutes and 23.53 seconds
+START - Feature Engineering .....   completed at Fri Nov  1 09:29:40 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Fri Nov  1 09:29:42 2024. Elapsed time: 0 minutes and 2.58 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Fri Nov  1 09:30:56 2024. Elapsed time: 1 minutes and 13.89 seconds
+Part3 - Merchant Categories & Age group completed at Fri Nov  1 09:30:57 2024. Elapsed time: 1 minutes and 15.10 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Fri Nov  1 09:33:35 2024. Elapsed time: 2 minutes and 37.91 seconds
+Part5 - RapidTransactionFlag completed at Fri Nov  1 09:33:46 2024. Elapsed time: 2 minutes and 48.90 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Fri Nov  1 09:33:59 2024. Elapsed time: 0 minutes and 12.50 seconds
+Part7 - NetworkX Start Step completed at Fri Nov  1 09:35:33 2024. Elapsed time: 1 minutes and 34.04 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Fri Nov  1 09:38:30 2024. Elapsed time: 2 minutes and 57.14 seconds
+Part9 - Community & Top Merchants completed at Fri Nov  1 09:39:40 2024. Elapsed time: 4 minutes and 7.56 seconds
+Part10 - Density completed at Fri Nov  1 09:39:40 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Fri Nov  1 09:39:43 2024. Elapsed time: 0 minutes and 2.52 seconds
+END - Feature Engineering .....   completed at Fri Nov  1 09:39:43 2024. Elapsed time: 0 minutes and 0.02 seconds
+START - Random Forest with DASK .....   completed at Fri Nov  1 09:39:43 2024. Elapsed time: 0 minutes and 0.01 seconds
+END - Random Forest with DASK Balanced & SMOTE Model .....   completed at Fri Nov  1 09:39:46 2024. Elapsed time: 0 minutes and 3.46 seconds
+Closed the DASK CLient completed at Fri Nov  1 09:39:47 2024. Elapsed time: 0 minutes and 0.64 seconds
+Notebook (Random Forest with DASK Balanced & SMOTE Model) Ended at...  completed at Fri Nov  1 09:39:47 2024. Elapsed time: 10 minutes and 31.04 seconds
+END - Random Forest with DASK Balanced & SMOTE Model .....   completed at Fri Nov  1 09:46:52 2024. Elapsed time: 7 minutes and 5.73 seconds
+Closed the DASK CLient completed at Fri Nov  1 09:46:52 2024. Elapsed time: 0 minutes and 0.01 seconds
+Notebook (Random Forest with DASK Balanced & SMOTE Model) Ended at...  completed at Fri Nov  1 09:46:52 2024. Elapsed time: 17 minutes and 36.14 seconds

@@ -1,0 +1,17 @@
+Notebook started at...  completed at Wed Oct 30 12:07:18 2024. Elapsed time: 0 minutes and 5.52 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Wed Oct 30 12:07:19 2024. Elapsed time: 0 minutes and 7.05 seconds
+START - Feature Engineering .....   completed at Wed Oct 30 12:07:19 2024. Elapsed time: 0 minutes and 0.00 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Wed Oct 30 12:07:22 2024. Elapsed time: 0 minutes and 2.54 seconds
+Distance Calculation with Multiprocessing (4 cores) completed at Wed Oct 30 12:08:30 2024. Elapsed time: 1 minutes and 8.52 seconds
+Part3 - Merchant Categories & Age group completed at Wed Oct 30 12:08:31 2024. Elapsed time: 1 minutes and 9.70 seconds
+TransactionFrequency Multiprocessing completed at Wed Oct 30 12:10:54 2024. Elapsed time: 2 minutes and 22.18 seconds
+Part4 - count_transactions_within_last_hour completed at Wed Oct 30 12:10:54 2024. Elapsed time: 2 minutes and 22.25 seconds
+Part5 - RapidTransactionFlag completed at Wed Oct 30 12:11:03 2024. Elapsed time: 0 minutes and 9.79 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Wed Oct 30 12:11:15 2024. Elapsed time: 0 minutes and 11.69 seconds
+Part7 - NetworkX Start Step completed at Wed Oct 30 12:12:33 2024. Elapsed time: 1 minutes and 17.35 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Wed Oct 30 12:15:21 2024. Elapsed time: 2 minutes and 48.15 seconds
+Part9 - Community & Top Merchants completed at Wed Oct 30 12:16:15 2024. Elapsed time: 3 minutes and 42.47 seconds
+Part10 - Density completed at Wed Oct 30 12:16:15 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Wed Oct 30 12:16:18 2024. Elapsed time: 0 minutes and 2.53 seconds
+END - Feature Engineering .....   completed at Wed Oct 30 12:16:18 2024. Elapsed time: 0 minutes and 0.01 seconds
+Notebook Ended at...  completed at Wed Oct 30 12:16:18 2024. Elapsed time: 9 minutes and 5.50 seconds
