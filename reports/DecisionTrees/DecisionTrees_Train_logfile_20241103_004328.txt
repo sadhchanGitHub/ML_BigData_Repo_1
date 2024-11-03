@@ -1,0 +1,18 @@
+DecisionTrees_Train Notebook  started at...  completed at Sun Nov  3 00:43:28 2024. Elapsed time: 0 minutes and 0.02 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sun Nov  3 00:43:37 2024. Elapsed time: 0 minutes and 8.83 seconds
+--------------------------------------------------- ------------------   completed at Sun Nov  3 00:43:37 2024. Elapsed time: 0 minutes and 8.84 seconds
+START - Feature Engineering .....   completed at Sun Nov  3 00:43:37 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sun Nov  3 00:43:39 2024. Elapsed time: 0 minutes and 2.70 seconds
+Part2 - Distance Calculation  completed at Sun Nov  3 00:49:16 2024. Elapsed time: 5 minutes and 36.27 seconds
+Part3 - Merchant Categories & Age group completed at Sun Nov  3 00:49:17 2024. Elapsed time: 0 minutes and 1.27 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 04:01:55 2024. Elapsed time: 192 minutes and 37.83 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 04:02:05 2024. Elapsed time: 0 minutes and 10.57 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 04:02:18 2024. Elapsed time: 0 minutes and 12.69 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 07:31:03 2024. Elapsed time: 208 minutes and 44.86 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 07:32:24 2024. Elapsed time: 1 minutes and 20.67 seconds
+Part10 - Density completed at Sun Nov  3 07:32:24 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - PageRank completed at Sun Nov  3 07:32:26 2024. Elapsed time: 0 minutes and 2.90 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 07:32:27 2024. Elapsed time: 0 minutes and 0.43 seconds
+DecisionTrees_Train START Model ....   completed at Sun Nov  3 07:32:27 2024. Elapsed time: 0 minutes and 0.01 seconds
+DecisionTrees_Train END Model ....   completed at Sun Nov  3 07:51:01 2024. Elapsed time: 18 minutes and 34.30 seconds
+DecisionTrees_Train Notebook Ended at...  completed at Sun Nov  3 07:51:15 2024. Elapsed time: 427 minutes and 47.41 seconds

@@ -1,0 +1,16 @@
+RandomForest_using_DASK_Train Notebook started at...  completed at Sun Nov  3 22:38:49 2024. Elapsed time: 0 minutes and 0.05 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sun Nov  3 22:38:59 2024. Elapsed time: 0 minutes and 9.72 seconds
+START - Feature Engineering .....   completed at Sun Nov  3 22:38:59 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sun Nov  3 22:39:03 2024. Elapsed time: 0 minutes and 3.54 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Sun Nov  3 22:41:54 2024. Elapsed time: 2 minutes and 51.18 seconds
+Part3 - Merchant Categories & Age group completed at Sun Nov  3 22:41:56 2024. Elapsed time: 2 minutes and 53.03 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 22:47:39 2024. Elapsed time: 5 minutes and 43.37 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 22:47:53 2024. Elapsed time: 5 minutes and 57.47 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 22:48:10 2024. Elapsed time: 0 minutes and 16.63 seconds
+Part7 - NetworkX Start Step completed at Sun Nov  3 22:50:12 2024. Elapsed time: 2 minutes and 2.48 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 22:55:06 2024. Elapsed time: 4 minutes and 53.72 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 22:56:35 2024. Elapsed time: 6 minutes and 23.02 seconds
+Part10 - Density completed at Sun Nov  3 22:56:35 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - PageRank completed at Sun Nov  3 22:56:38 2024. Elapsed time: 0 minutes and 3.07 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 22:56:39 2024. Elapsed time: 0 minutes and 0.02 seconds
+START - Random Forest with DASK .....   completed at Sun Nov  3 22:56:39 2024. Elapsed time: 0 minutes and 0.01 seconds

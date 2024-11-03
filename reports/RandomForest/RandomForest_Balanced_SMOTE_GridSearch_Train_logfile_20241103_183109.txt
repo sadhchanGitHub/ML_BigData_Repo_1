@@ -1,0 +1,19 @@
+RandomForest_Balanced_SMOTE_GridSearch_Train Notebook  started at...  completed at Sun Nov  3 18:31:09 2024. Elapsed time: 0 minutes and 0.03 seconds
+Starting the DASK Client completed at Sun Nov  3 18:31:10 2024. Elapsed time: 0 minutes and 0.39 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sun Nov  3 18:31:39 2024. Elapsed time: 0 minutes and 30.08 seconds
+--------------------------------------------------- ------------------   completed at Sun Nov  3 18:31:39 2024. Elapsed time: 0 minutes and 30.08 seconds
+START - Feature Engineering .....   completed at Sun Nov  3 18:31:39 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sun Nov  3 18:31:42 2024. Elapsed time: 0 minutes and 2.82 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Sun Nov  3 18:33:55 2024. Elapsed time: 2 minutes and 13.05 seconds
+Part3 - Merchant Categories & Age group completed at Sun Nov  3 18:33:57 2024. Elapsed time: 2 minutes and 14.57 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 18:38:38 2024. Elapsed time: 4 minutes and 41.06 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 18:38:51 2024. Elapsed time: 4 minutes and 54.45 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 18:39:06 2024. Elapsed time: 0 minutes and 14.58 seconds
+Part7 - NetworkX Start Step completed at Sun Nov  3 18:41:16 2024. Elapsed time: 2 minutes and 10.10 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 18:46:37 2024. Elapsed time: 5 minutes and 21.35 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 18:48:15 2024. Elapsed time: 6 minutes and 58.80 seconds
+Part10 - Density completed at Sun Nov  3 18:48:15 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - PageRank completed at Sun Nov  3 18:48:18 2024. Elapsed time: 0 minutes and 2.82 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 18:48:18 2024. Elapsed time: 0 minutes and 0.04 seconds
+--------------------------------------------------- ------------------   completed at Sun Nov  3 18:48:18 2024. Elapsed time: 0 minutes and 0.00 seconds
+RandomForest_Balanced_SMOTE_GridSearch_Train START Model ....   completed at Sun Nov  3 18:48:18 2024. Elapsed time: 0 minutes and 0.01 seconds

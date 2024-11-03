@@ -1,0 +1,19 @@
+Random Forest SMOTE using DASK Threshold_0.3_Train Notebook  started at...  completed at Sun Nov  3 17:29:00 2024. Elapsed time: 0 minutes and 0.06 seconds
+Starting the DASK Client completed at Sun Nov  3 17:29:01 2024. Elapsed time: 0 minutes and 0.56 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sun Nov  3 17:29:27 2024. Elapsed time: 0 minutes and 27.07 seconds
+--------------------------------------------------- ------------------   completed at Sun Nov  3 17:29:27 2024. Elapsed time: 0 minutes and 27.08 seconds
+START - Feature Engineering .....   completed at Sun Nov  3 17:29:27 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sun Nov  3 17:29:30 2024. Elapsed time: 0 minutes and 2.82 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Sun Nov  3 17:31:10 2024. Elapsed time: 1 minutes and 39.37 seconds
+Part3 - Merchant Categories & Age group completed at Sun Nov  3 17:31:11 2024. Elapsed time: 1 minutes and 40.73 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 17:34:26 2024. Elapsed time: 3 minutes and 14.50 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 17:34:37 2024. Elapsed time: 3 minutes and 26.03 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 17:34:50 2024. Elapsed time: 0 minutes and 12.80 seconds
+Part7 - NetworkX Start Step completed at Sun Nov  3 17:36:28 2024. Elapsed time: 1 minutes and 37.80 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 17:40:43 2024. Elapsed time: 4 minutes and 14.99 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 17:42:13 2024. Elapsed time: 5 minutes and 45.06 seconds
+Part10 - Density completed at Sun Nov  3 17:42:13 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - PageRank completed at Sun Nov  3 17:42:16 2024. Elapsed time: 0 minutes and 2.87 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 17:42:16 2024. Elapsed time: 0 minutes and 0.01 seconds
+--------------------------------------------------- ------------------   completed at Sun Nov  3 17:42:16 2024. Elapsed time: 0 minutes and 0.00 seconds
+Random Forest SMOTE using DASK Threshold_0.3_Train START Model ....   completed at Sun Nov  3 17:42:16 2024. Elapsed time: 0 minutes and 0.01 seconds

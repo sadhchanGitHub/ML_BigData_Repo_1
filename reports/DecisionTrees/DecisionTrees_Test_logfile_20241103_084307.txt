@@ -1,0 +1,18 @@
+DecisionTrees_Test Notebook  started at...  completed at Sun Nov  3 08:43:07 2024. Elapsed time: 0 minutes and 0.02 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sun Nov  3 08:43:12 2024. Elapsed time: 0 minutes and 4.96 seconds
+--------------------------------------------------- ------------------   completed at Sun Nov  3 08:43:12 2024. Elapsed time: 0 minutes and 4.96 seconds
+START - Feature Engineering .....   completed at Sun Nov  3 08:43:12 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sun Nov  3 08:43:13 2024. Elapsed time: 0 minutes and 1.11 seconds
+Part2 - Distance Calculation  completed at Sun Nov  3 08:58:08 2024. Elapsed time: 14 minutes and 55.28 seconds
+Part3 - Merchant Categories & Age group completed at Sun Nov  3 08:58:09 2024. Elapsed time: 0 minutes and 0.54 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 09:03:41 2024. Elapsed time: 5 minutes and 32.47 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 09:03:45 2024. Elapsed time: 0 minutes and 3.74 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 09:03:49 2024. Elapsed time: 0 minutes and 4.72 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 09:11:36 2024. Elapsed time: 7 minutes and 46.95 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 09:12:29 2024. Elapsed time: 0 minutes and 52.40 seconds
+Part10 - Density completed at Sun Nov  3 09:12:29 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Sun Nov  3 09:12:30 2024. Elapsed time: 0 minutes and 1.52 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 09:12:31 2024. Elapsed time: 0 minutes and 0.13 seconds
+DecisionTrees_Test START Model ....   completed at Sun Nov  3 09:12:31 2024. Elapsed time: 0 minutes and 0.01 seconds
+DecisionTrees_Test END Model ....   completed at Sun Nov  3 09:15:41 2024. Elapsed time: 3 minutes and 9.96 seconds
+DecisionTrees_Test Notebook Ended at...  completed at Sun Nov  3 09:15:41 2024. Elapsed time: 32 minutes and 33.90 seconds

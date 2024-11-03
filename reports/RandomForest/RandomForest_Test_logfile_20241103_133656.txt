@@ -1,0 +1,18 @@
+Random Forest using DASK_Test Notebook started at...  completed at Sun Nov  3 13:36:56 2024. Elapsed time: 0 minutes and 0.04 seconds
+------Starting the DASK Client----- completed at Sun Nov  3 13:36:56 2024. Elapsed time: 0 minutes and 0.05 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sun Nov  3 13:37:14 2024. Elapsed time: 0 minutes and 18.16 seconds
+START - Feature Engineering .....   completed at Sun Nov  3 13:37:14 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sun Nov  3 13:37:15 2024. Elapsed time: 0 minutes and 1.21 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Sun Nov  3 13:37:50 2024. Elapsed time: 0 minutes and 34.34 seconds
+Part3 - Merchant Categories & Age group completed at Sun Nov  3 13:37:50 2024. Elapsed time: 0 minutes and 35.03 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 13:38:57 2024. Elapsed time: 1 minutes and 6.55 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 13:39:01 2024. Elapsed time: 1 minutes and 11.19 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 13:39:07 2024. Elapsed time: 0 minutes and 5.45 seconds
+Part7 - NetworkX Start Step completed at Sun Nov  3 13:40:03 2024. Elapsed time: 0 minutes and 55.81 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 13:42:23 2024. Elapsed time: 2 minutes and 20.20 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 13:43:30 2024. Elapsed time: 3 minutes and 27.21 seconds
+Part10 - Density completed at Sun Nov  3 13:43:30 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Sun Nov  3 13:43:32 2024. Elapsed time: 0 minutes and 2.02 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 13:43:32 2024. Elapsed time: 0 minutes and 0.01 seconds
+START - Random Forest with DASK .....   completed at Sun Nov  3 13:43:32 2024. Elapsed time: 0 minutes and 0.00 seconds
+Random Forest using DASK_test Notebook Ended at...  completed at Sun Nov  3 14:02:52 2024. Elapsed time: 25 minutes and 56.38 seconds

@@ -1,0 +1,20 @@
+DecisionTrees_Parallelized_GridSearch_Balanced_by_Top10Features_Test Notebook  started at...  completed at Sun Nov  3 10:35:01 2024. Elapsed time: 0 minutes and 0.04 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Sun Nov  3 10:35:04 2024. Elapsed time: 0 minutes and 3.67 seconds
+--------------------------------------------------- ------------------   completed at Sun Nov  3 10:35:04 2024. Elapsed time: 0 minutes and 3.67 seconds
+START - Feature Engineering .....   completed at Sun Nov  3 10:35:04 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Sun Nov  3 10:35:06 2024. Elapsed time: 0 minutes and 1.17 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Sun Nov  3 10:35:37 2024. Elapsed time: 0 minutes and 30.99 seconds
+Part3 - Merchant Categories & Age group completed at Sun Nov  3 10:35:37 2024. Elapsed time: 0 minutes and 0.58 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Sun Nov  3 10:36:39 2024. Elapsed time: 1 minutes and 2.06 seconds
+Part5 - RapidTransactionFlag completed at Sun Nov  3 10:36:43 2024. Elapsed time: 0 minutes and 3.70 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Sun Nov  3 10:36:48 2024. Elapsed time: 0 minutes and 4.57 seconds
+Part7 - NetworkX Start Step completed at Sun Nov  3 10:37:25 2024. Elapsed time: 0 minutes and 37.93 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Sun Nov  3 10:39:22 2024. Elapsed time: 1 minutes and 56.66 seconds
+Part9 - Community & Top Merchants completed at Sun Nov  3 10:40:35 2024. Elapsed time: 1 minutes and 13.26 seconds
+Part10 - Density completed at Sun Nov  3 10:40:35 2024. Elapsed time: 0 minutes and 0.02 seconds
+Part11 - PageRank completed at Sun Nov  3 10:40:37 2024. Elapsed time: 0 minutes and 1.59 seconds
+END - Feature Engineering .....   completed at Sun Nov  3 10:40:37 2024. Elapsed time: 0 minutes and 0.01 seconds
+DecisionTrees_Parallelized_GridSearch_Balanced_by_Top10Features_Test START Model ....   completed at Sun Nov  3 10:40:37 2024. Elapsed time: 0 minutes and 0.01 seconds
+DecisionTrees_Parallelized_GridSearch_Balanced_by_Top10Features_Test END Model ....   completed at Sun Nov  3 10:40:38 2024. Elapsed time: 0 minutes and 0.80 seconds
+DecisionTrees_Parallelized_GridSearch_Balanced_by_Top10Features_Test saved the descision tree ....   completed at Sun Nov  3 10:40:38 2024. Elapsed time: 0 minutes and 0.01 seconds
+DecisionTrees_Parallelized_GridSearch_Balanced_by_Top10Features_Test Notebook Ended at...  completed at Sun Nov  3 10:40:38 2024. Elapsed time: 5 minutes and 37.17 seconds
