@@ -1,0 +1,20 @@
+DecisionTrees_Parallelized_Test Notebook  started at...  completed at Mon Nov  4 22:15:34 2024. Elapsed time: 0 minutes and 0.02 seconds
+Initial Steps Completed File Loading, Describe, Date Conversions etc..   completed at Mon Nov  4 22:15:39 2024. Elapsed time: 0 minutes and 4.31 seconds
+--------------------------------------------------- ------------------   completed at Mon Nov  4 22:15:39 2024. Elapsed time: 0 minutes and 4.31 seconds
+START - Feature Engineering .....   completed at Mon Nov  4 22:15:39 2024. Elapsed time: 0 minutes and 0.00 seconds
+Part1 - TrxAmount, Hour, DayOfWeeek etc.. completed at Mon Nov  4 22:15:40 2024. Elapsed time: 0 minutes and 1.15 seconds
+Part2 - Distance Calculation with Multiprocessing (4 cores) completed at Mon Nov  4 22:39:25 2024. Elapsed time: 23 minutes and 45.30 seconds
+Part3 - Merchant Categories & Age group completed at Mon Nov  4 22:39:26 2024. Elapsed time: 23 minutes and 45.88 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Mon Nov  4 23:27:26 2024. Elapsed time: 48 minutes and 0.46 seconds
+Part4 - TransactionFrequency Multiprocessing completed at Mon Nov  4 23:27:26 2024. Elapsed time: 48 minutes and 0.57 seconds
+Part5 - RapidTransactionFlag completed at Mon Nov  4 23:27:51 2024. Elapsed time: 0 minutes and 25.05 seconds
+Part6 - TransactionCountLast_X_Days & AverageTrxAmountLast_X_Days completed at Mon Nov  4 23:28:02 2024. Elapsed time: 0 minutes and 10.72 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Tue Nov  5 00:43:15 2024. Elapsed time: 40 minutes and 42.20 seconds
+Part8 - Betweenness Centrality Calculation with Multiprocessing completed at Tue Nov  5 00:43:15 2024. Elapsed time: 0 minutes and 0.01 seconds
+Part9 - Community & Top Merchants completed at Tue Nov  5 01:00:57 2024. Elapsed time: 17 minutes and 41.91 seconds
+Part10 - Density completed at Tue Nov  5 01:00:57 2024. Elapsed time: 0 minutes and 0.03 seconds
+Part11 - PageRank completed at Tue Nov  5 01:00:58 2024. Elapsed time: 0 minutes and 1.54 seconds
+END - Feature Engineering .....   completed at Tue Nov  5 01:00:58 2024. Elapsed time: 0 minutes and 0.14 seconds
+DecisionTrees_Parallelized_Test START Model ....   completed at Tue Nov  5 01:00:58 2024. Elapsed time: 0 minutes and 0.01 seconds
+DecisionTrees_Parallelized_Test END Model ....   completed at Tue Nov  5 01:12:28 2024. Elapsed time: 11 minutes and 29.75 seconds
+DecisionTrees_Parallelized_Test Notebook Ended at...  completed at Tue Nov  5 01:12:28 2024. Elapsed time: 176 minutes and 53.93 seconds
